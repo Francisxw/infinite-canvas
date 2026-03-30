@@ -1,9 +1,96 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --canvas-surface: #111214;
+    --canvas-panel: #17191d;
+    --canvas-panel-soft: #1d2026;
+    --canvas-border: rgba(255, 255, 255, 0.14);
+    --canvas-text: rgba(246, 248, 252, 0.92);
+    --canvas-muted: rgba(199, 206, 219, 0.58);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
   body {
     @apply bg-canvas-bg text-white;
+    margin: 0;
+    font-family: 'Manrope', 'Segoe UI', sans-serif;
+    letter-spacing: 0.01em;
+    background:
+      radial-gradient(1200px 700px at 12% 12%, rgba(123, 156, 255, 0.14), transparent 58%),
+      radial-gradient(900px 620px at 90% 8%, rgba(112, 211, 255, 0.12), transparent 62%),
+      radial-gradient(800px 520px at 52% 100%, rgba(255, 184, 126, 0.08), transparent 62%),
+      var(--canvas-surface);
+    color: var(--canvas-text);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+}
+
+@layer utilities {
+  .canvas-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+  }
+
+  .canvas-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .canvas-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .canvas-scrollbar::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(220, 230, 255, 0.34), rgba(175, 188, 214, 0.14));
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  .canvas-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(228, 236, 255, 0.44), rgba(191, 204, 232, 0.2));
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  .glass-panel {
+    border: 1px solid var(--canvas-border);
+    background: linear-gradient(145deg, rgba(27, 30, 37, 0.94), rgba(19, 21, 27, 0.92));
+    box-shadow:
+      0 24px 60px rgba(0, 0, 0, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(20px);
+  }
+}
+
+@keyframes scanline {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+@keyframes scanbar {
+  0% {
+    transform: translateX(-130%);
+  }
+  100% {
+    transform: translateX(320%);
   }
 }

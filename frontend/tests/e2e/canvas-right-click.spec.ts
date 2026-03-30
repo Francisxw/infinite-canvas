@@ -1,147 +1,54 @@
-import { test, expect } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
-test.describe('Canvas Right-Click Context Menu', () => {
+test.describe('Canvas context menu', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to the app and wait for canvas to be ready
     await page.goto('/')
-    // Wait for the tldraw canvas to be visible
-    await page.waitForSelector('.tl-canvas', { timeout: 30000 })
-    // Wait for tldraw to fully initialize
-    await page.waitForTimeout(2000)
+    await page.evaluate(() => {
+      window.localStorage.removeItem('infinite-canvas-flow')
+      window.localStorage.removeItem('infinite-canvas-project')
+    })
+    await page.reload()
+    await page.waitForSelector('.react-flow', { timeout: 30000 })
+    await page.waitForSelector('.react-flow__pane', { timeout: 30000 })
+    await page.waitForTimeout(300)
   })
 
-  test('right-click keeps canvas responsive', async ({ page }) => {
-    // Get canvas bounding box
-    const canvas = page.locator('.tl-canvas')
-    const box = await canvas.boundingBox()
+  test('right-click opens create menu and left-click pane closes it', async ({ page }) => {
+    const pane = page.locator('.react-flow__pane')
+    const contextMenu = page.getByTestId('canvas-context-menu')
+    const box = await pane.boundingBox()
     expect(box).not.toBeNull()
 
-    const centerX = box!.x + box!.width / 2
-    const centerY = box!.y + box!.height / 2
+    const x = box!.x + box!.width / 2
+    const y = box!.y + box!.height / 2
 
-    // Right-click should be dedicated to context-menu flow
-    await page.mouse.click(centerX, centerY, { button: 'right' })
+    await page.mouse.click(x, y, { button: 'right' })
+    await expect(contextMenu).toBeVisible()
+    await expect(contextMenu.getByRole('button', { name: '文本 创建文本卡片' })).toBeVisible()
+    await expect(contextMenu.getByRole('button', { name: '图片' })).toBeVisible()
+    await expect(contextMenu.getByRole('button', { name: '视频' })).toBeVisible()
 
-    // Wait a bit for any default browser context menu or custom menu
-    await page.waitForTimeout(500)
-
-    // Key verification: canvas remains responsive after right-click
-    const canvasAfter = page.locator('.tl-canvas')
-    await expect(canvasAfter).toBeVisible()
+    await page.mouse.click(x + 60, y + 60, { button: 'left' })
+    await expect(contextMenu).toHaveCount(0)
   })
 
-  test('left-drag pans interaction path without breaking right-click', async ({ page }) => {
-    // Get canvas bounding box
-    const canvas = page.locator('.tl-canvas')
-    const box = await canvas.boundingBox()
+  test('right-click menu can create a video node', async ({ page }) => {
+    const pane = page.locator('.react-flow__pane')
+    const box = await pane.boundingBox()
     expect(box).not.toBeNull()
 
-    const startX = box!.x + box!.width / 2
-    const startY = box!.y + box!.height / 2
+    // Click in bottom-right area, away from initial nodes (image at 320,220; text at 860,240; video at 320,500)
+    const x = box!.x + box!.width * 0.8
+    const y = box!.y + box!.height * 0.8
 
-    // Mouse down with left button
-    await page.mouse.move(startX, startY)
-    await page.mouse.down({ button: 'left' })
+    await page.mouse.click(x, y, { button: 'right' })
 
-    // Move the mouse while holding left button (drag)
-    await page.mouse.move(startX + 10, startY + 10)
+    // Verify menu is visible before attempting to click
+    const contextMenu = page.getByTestId('canvas-context-menu')
+    await expect(contextMenu).toBeVisible()
 
-    // Mouse up to release
-    await page.mouse.up({ button: 'left' })
-
-    // Wait a bit for any context menu to potentially appear
-    await page.waitForTimeout(500)
-
-    // Verify canvas still responsive, then right-click still works
-    const canvasAfter = page.locator('.tl-canvas')
-    await expect(canvasAfter).toBeVisible()
-
-    await page.mouse.click(startX + 60, startY + 60, { button: 'right' })
-    await page.waitForTimeout(300)
-    await expect(canvasAfter).toBeVisible()
-  })
-
-  test('left-drag should not poison subsequent right-click', async ({ page }) => {
-    // Get canvas bounding box
-    const canvas = page.locator('.tl-canvas')
-    const box = await canvas.boundingBox()
-    expect(box).not.toBeNull()
-
-    const startX = box!.x + box!.width / 2
-    const startY = box!.y + box!.height / 2
-
-    // Left-drag should start canvas panning state
-    await page.mouse.move(startX, startY)
-    await page.mouse.down({ button: 'left' })
-    await page.mouse.move(startX + 50, startY + 50)
-    await page.mouse.up({ button: 'left' })
-    await page.waitForTimeout(300)
-
-    // Pure right-click should still work normally
-    // Click at a different position to ensure fresh interaction
-    await page.mouse.click(startX + 100, startY + 100, { button: 'right' })
-    await page.waitForTimeout(500)
-
-    // Verify canvas is still responsive
-    const canvasAfter = page.locator('.tl-canvas')
-    await expect(canvasAfter).toBeVisible()
-  })
-
-  test('non-canvas right-click does not affect canvas drag behavior', async ({ page }) => {
-    // Get canvas bounding box
-    const canvas = page.locator('.tl-canvas')
-    const box = await canvas.boundingBox()
-    expect(box).not.toBeNull()
-
-    // Right-click outside canvas (e.g., at top-left which is typically header/UI area)
-    await page.mouse.click(10, 10, { button: 'right' })
-    await page.waitForTimeout(300)
-
-    // Now right-click on canvas - should work normally (no poisoning)
-    const startX = box!.x + box!.width / 2
-    const startY = box!.y + box!.height / 2
-    await page.mouse.click(startX, startY, { button: 'right' })
-    await page.waitForTimeout(500)
-
-    // Canvas should still be responsive and visible
-    const canvasAfter = page.locator('.tl-canvas')
-    await expect(canvasAfter).toBeVisible()
-
-    // Verify left-drag still works after non-canvas right-click
-    await page.mouse.move(startX, startY)
-    await page.mouse.down({ button: 'left' })
-    await page.mouse.move(startX + 20, startY + 20)
-    await page.mouse.up({ button: 'left' })
-    await page.waitForTimeout(300)
-
-    // Now a pure right-click should work (proving isolation works)
-    await page.mouse.click(startX + 150, startY + 150, { button: 'right' })
-    await page.waitForTimeout(500)
-
-    // Final verification - canvas still works
-    await expect(canvasAfter).toBeVisible()
-  })
-
-  test('ctrl+left-drag should be reserved for selection flow and not trigger custom pan lock', async ({ page }) => {
-    const canvas = page.locator('.tl-canvas')
-    const box = await canvas.boundingBox()
-    expect(box).not.toBeNull()
-
-    const startX = box!.x + box!.width / 2
-    const startY = box!.y + box!.height / 2
-
-    await page.keyboard.down('Control')
-    await page.mouse.move(startX, startY)
-    await page.mouse.down({ button: 'left' })
-    await page.mouse.move(startX + 40, startY + 40)
-    await page.mouse.up({ button: 'left' })
-    await page.keyboard.up('Control')
-
-    await page.waitForTimeout(300)
-
-    // Canvas remains responsive; Ctrl+right path should not poison subsequent right-click menu behavior
-    await page.mouse.click(startX + 80, startY + 80, { button: 'right' })
-    await page.waitForTimeout(300)
-    await expect(canvas).toBeVisible()
+    const initialVideoNodes = await page.locator('[data-testid^="rf__node-video-node"]').count()
+    await contextMenu.getByRole('button', { name: '视频' }).click()
+    await expect(page.locator('[data-testid^="rf__node-video-node"]')).toHaveCount(initialVideoNodes + 1)
   })
 })

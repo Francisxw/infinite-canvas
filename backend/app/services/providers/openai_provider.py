@@ -1,9 +1,12 @@
 from typing import Any
 
-import httpx
-
 from app.config import get_settings
-from app.services.providers.base import ModelProvider
+from app.services.providers.base import (
+    ModelProvider,
+    ProviderConfigurationError,
+    ProviderError,
+    provider_post_json,
+)
 
 
 class OpenAIProvider(ModelProvider):
@@ -19,12 +22,23 @@ class OpenAIProvider(ModelProvider):
             "Content-Type": "application/json",
         }
 
-    async def generate_image(self, payload: dict[str, Any]) -> dict[str, Any]:
+    def _require_api_key(self) -> None:
         if not self.settings.openai_api_key:
-            return {
-                "success": False,
-                "error": "OPENAI_API_KEY is not configured",
-            }
+            raise ProviderConfigurationError("OpenAI")
+
+    async def _post_json(
+        self, path: str, payload: dict[str, Any], timeout: float
+    ) -> dict[str, Any]:
+        return await provider_post_json(
+            provider_name="openai",
+            url=f"{self.settings.openai_base_url}{path}",
+            headers=self._headers,
+            payload=payload,
+            timeout=timeout,
+        )
+
+    async def generate_image(self, payload: dict[str, Any]) -> dict[str, Any]:
+        self._require_api_key()
 
         prompt = payload.get("messages", [{}])[0].get("content", "")
         model = payload.get("model", "gpt-image-1")
@@ -43,14 +57,9 @@ class OpenAIProvider(ModelProvider):
             "n": max(1, min(4, int(payload.get("n", 1)))),
         }
 
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            response = await client.post(
-                f"{self.settings.openai_base_url}/images/generations",
-                headers=self._headers,
-                json=request_payload,
-            )
-            response.raise_for_status()
-            data = response.json()
+        data = await self._post_json(
+            "/images/generations", request_payload, timeout=120.0
+        )
 
         images = []
         for item in data.get("data", []):
@@ -70,6 +79,42 @@ class OpenAIProvider(ModelProvider):
                     }
                 }
             ],
+            "raw": data,
+        }
+
+    async def generate_video(self, payload: dict[str, Any]) -> dict[str, Any]:
+        raise ProviderError(
+            "Video generation is not supported by the configured provider.",
+            code="video_generation_unsupported",
+            status_code=501,
+        )
+
+    async def generate_text(self, payload: dict[str, Any]) -> dict[str, Any]:
+        self._require_api_key()
+
+        request_payload = {
+            "model": payload.get("model", "gpt-4o-mini"),
+            "messages": payload.get("messages", []),
+        }
+
+        data = await self._post_json(
+            "/chat/completions", request_payload, timeout=120.0
+        )
+
+        content = ""
+        choices = data.get("choices", [])
+        if isinstance(choices, list) and choices:
+            message = (
+                choices[0].get("message") if isinstance(choices[0], dict) else None
+            )
+            if isinstance(message, dict):
+                value = message.get("content")
+                if isinstance(value, str):
+                    content = value
+
+        return {
+            "provider": "openai",
+            "text": content,
             "raw": data,
         }
 

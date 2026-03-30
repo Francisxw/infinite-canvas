@@ -17,9 +17,7 @@ export function useAIGeneration() {
 
       try {
         const result = await generateImage(payload)
-        const firstImage =
-          result?.choices?.[0]?.message?.images?.[0]?.image_url?.url ||
-          result?.choices?.[0]?.message?.images?.[0]?.imageUrl?.url
+        const firstImage = result.images[0]
 
         updateTask(taskId, {
           status: 'done',

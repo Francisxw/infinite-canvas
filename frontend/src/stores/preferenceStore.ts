@@ -14,7 +14,7 @@ export const usePreferenceStore = create<PreferenceState>()(
   persist(
     (set) => ({
       language: 'zh',
-      model: 'google/gemini-2.5-flash-image-preview',
+      model: 'google/gemini-3.1-flash-image-preview',
       imageSize: '1K',
       setLanguage: (language) => set({ language }),
       setModel: (model) => set({ model }),

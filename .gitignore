@@ -11,6 +11,7 @@ ENV/
 .env
 .env.local
 .env.production
+.env.runtime-*
 
 # Build outputs
 dist/
@@ -18,6 +19,12 @@ build/
 *.egg-info/
 .eggs/
 *.egg
+artifacts/
+scripts/screenshots/
+verification_screenshots/
+frontend/dist/
+frontend/tmp/
+frontend/tmp-output/
 
 # IDE
 .vscode/
@@ -41,8 +48,18 @@ python.logs
 .coverage
 htmlcov/
 .pytest_cache/
+.ruff_cache/
 .playwright-report/
 test-results/
+frontend/playwright-report/
+frontend/test-results/
+
+# Runtime data
+.data/
+backend/.data/
 
 # Misc
 .sisyphus/
+.claude/
+.config/
+nul

@@ -5,14 +5,14 @@ const resources = {
   zh: {
     translation: {
       app: {
-        title: '无限画布创作平台',
+        title: 'Infinite Studio 可视化创作画布',
       },
     },
   },
   en: {
     translation: {
       app: {
-        title: 'Infinite Canvas Platform',
+        title: 'Infinite Studio Visual Canvas',
       },
     },
   },
