@@ -1,5 +1,7 @@
 # Infinite Studio
 
+![主界面](docs/主界面.png)
+
 基于 React Flow + FastAPI 的可视化 AI 画布工作室。
 
 ## 技术栈
