@@ -1,4 +1,5 @@
 # Infinite Studio Backend
+![主界面](../docs/主界面.png)
 
 ## Requirements
 
