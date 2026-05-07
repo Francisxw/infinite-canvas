@@ -1,8 +1,5 @@
 import type { Edge } from '@xyflow/react'
 import type { AnyFlowNode, FlowNodeType, ImageNodeData, TextNodeData, VideoNodeData } from '../nodes/flow/types'
-import { useAccountStore } from '../../stores/accountStore'
-
-
 
 const DEFAULT_TEXT_MODEL = 'google/gemini-2.5-flash'
 const DEFAULT_IMAGE_MODEL = 'google/gemini-3.1-flash-image-preview'
@@ -66,17 +63,9 @@ const DEFAULT_VIDEO_NODE: VideoNodeData = {
 }
 
 function resolveDefaultModel(type: FlowNodeType) {
-  const openRouterSettings = useAccountStore.getState().profile?.openrouter
-
-  if (type === 'text-node') {
-    return openRouterSettings?.preferred_models.text ?? DEFAULT_TEXT_MODEL
-  }
-
-  if (type === 'image-node') {
-    return openRouterSettings?.preferred_models.image ?? DEFAULT_IMAGE_MODEL
-  }
-
-  return openRouterSettings?.preferred_models.video ?? DEFAULT_VIDEO_MODEL
+  if (type === 'text-node') return DEFAULT_TEXT_MODEL
+  if (type === 'image-node') return DEFAULT_IMAGE_MODEL
+  return DEFAULT_VIDEO_MODEL
 }
 
 export function makeNodeData(type: FlowNodeType) {

@@ -1,15 +1,12 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 
 from app.config import get_settings
 from app.rate_limit import limiter
-from app.services.account_store import AccountStoreError
-from app.routers.auth import router as auth_router
 from app.routers.health import router as health_router
 from app.routers.openrouter import router as openrouter_router
-from app.routers.payments import router as payments_router
 from app.routers.upload import router as upload_router
 
 settings = get_settings()
@@ -27,21 +24,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Account-Points", "X-Account-User-Id"],
 )
-
-
-@app.exception_handler(AccountStoreError)
-async def handle_account_store_error(_, exc: AccountStoreError):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "error": {
-                "code": exc.code,
-                "message": exc.message,
-            }
-        },
-    )
 
 
 @app.exception_handler(RateLimitExceeded)
@@ -59,7 +42,5 @@ async def handle_rate_limit_exceeded(_, exc: RateLimitExceeded):
 
 
 app.include_router(health_router)
-app.include_router(auth_router)
 app.include_router(openrouter_router)
-app.include_router(payments_router)
 app.include_router(upload_router)

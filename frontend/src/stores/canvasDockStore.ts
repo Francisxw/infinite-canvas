@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type DockPanel = 'create' | 'history' | 'assets' | 'profile' | null
+export type DockPanel = 'create' | 'history' | 'assets' | null
 
 type GenerationRecord = {
   id: string

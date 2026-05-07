@@ -1,10 +1,9 @@
-import { Clock3, FolderOpen, Plus, UserCircle2 } from 'lucide-react'
+import { Clock3, FolderOpen, Plus } from 'lucide-react'
 import { NODE_CREATION_ITEMS } from './nodeCreationConfig'
 import { useCanvasDockStore, type DockPanel } from '../../stores/canvasDockStore'
 import { DockButton } from './DockButton'
 import { PanelHistory } from './PanelHistory'
 import { PanelAssets } from './PanelAssets'
-import { PanelProfile } from './PanelProfile'
 
 type CanvasDockProps = {
   onCreateText: () => void
@@ -20,7 +19,6 @@ function Panel({ panel }: { panel: DockPanel }) {
       <div className="pointer-events-auto w-[min(78vw,860px)] rounded-[26px] p-4 glass-panel">
         {panel === 'history' ? <PanelHistory /> : null}
         {panel === 'assets' ? <PanelAssets /> : null}
-        {panel === 'profile' ? <PanelProfile /> : null}
       </div>
     </div>
   )
@@ -56,9 +54,6 @@ export function CanvasDock({ onCreateText, onCreateImage, onCreateVideo }: Canva
           </DockButton>
           <DockButton label="资产文件管理" active={activePanel === 'assets'} onClick={() => toggle('assets')}>
             <FolderOpen className="h-5 w-5" />
-          </DockButton>
-          <DockButton label="个人中心" active={activePanel === 'profile'} onClick={() => toggle('profile')}>
-            <UserCircle2 className="h-5 w-5" />
           </DockButton>
         </div>
       </div>

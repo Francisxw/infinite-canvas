@@ -1,6 +1,4 @@
 import axios from 'axios'
-import { authBridge, type AccountSyncPayload } from './authBridge'
-import type { OpenRouterAccountSettings } from '../components/nodes/flow/types'
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:18000'
 
@@ -8,24 +6,6 @@ export const api = axios.create({
   baseURL,
   timeout: 120000,
 })
-
-api.interceptors.request.use((config) => {
-  const token = authBridge.getToken()
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
-
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (isUnauthorizedError(error)) {
-      authBridge.handleAuthFailure()
-    }
-    return Promise.reject(error)
-  }
-)
 
 export interface GenerateImagePayload {
   provider?: 'openrouter' | 'openai'
@@ -86,7 +66,6 @@ export interface NormalizedGenerateImageResponse {
   provider?: string
   images: string[]
   raw: unknown
-  points?: number
   choices?: Array<{
     message?: {
       images?: Array<{
@@ -102,118 +81,12 @@ export interface NormalizedGenerateTextResponse {
   provider?: string
   text: string
   raw: unknown
-  points?: number
 }
 
 export interface NormalizedGenerateVideoResponse {
   provider?: string
   videos: string[]
   raw: unknown
-  points?: number
-}
-
-export interface AccountProfile {
-  id: string
-  email: string
-  display_name: string
-  points: number
-  created_at: string
-  openrouter?: OpenRouterAccountSettings
-}
-
-export interface AccountSettingsResponse {
-  user: AccountProfile
-  settings: OpenRouterAccountSettings
-}
-
-export interface UpdateAccountSettingsPayload {
-  openrouter_mode: 'platform' | 'custom'
-  openrouter_api_key?: string
-  preferred_models?: {
-    text?: string | null
-    image?: string | null
-    video?: string | null
-  }
-}
-
-export interface AccountLedgerEntry {
-  id: string
-  type: 'signup_bonus' | 'recharge' | 'generation' | 'refund'
-  amount: number
-  balance_after: number
-  description: string
-  created_at: string
-}
-
-export interface AccountPackage {
-  id: string
-  label: string
-  credits: number
-  bonus_credits: number
-  total_credits: number
-  price_cny: number
-}
-
-export type RechargeOrderStatus = 'pending' | 'paid' | 'failed' | 'expired'
-
-export interface RechargeOrder {
-  id: string
-  user_id: string
-  package_id: string
-  provider: string
-  out_trade_no: string
-  status: RechargeOrderStatus
-  amount_cny: number
-  credits: number
-  bonus_credits: number
-  total_credits: number
-  code_url: string | null
-  payment_reference: string | null
-  provider_payload: string | null
-  created_at: string
-  updated_at: string
-  paid_at: string | null
-}
-
-export interface AuthResponse {
-  token: string
-  user: AccountProfile
-  ledger: AccountLedgerEntry[]
-}
-
-export interface AccountProfileResponse {
-  user: AccountProfile
-  ledger: AccountLedgerEntry[]
-}
-
-export interface AccountPackagesResponse {
-  packages: AccountPackage[]
-  user: AccountProfile
-}
-
-export interface WeChatRechargeOrderRequest {
-  package_id: string
-}
-
-export interface WeChatRechargeOrderResponse {
-  order: RechargeOrder
-  package?: AccountPackage
-  user: AccountProfile
-  ledger?: AccountLedgerEntry[]
-  payment?: {
-    provider: 'wechatpay_native'
-    code_url: string
-    display_mode: 'qr'
-  }
-}
-
-export interface LoginPayload {
-  email: string
-  password: string
-}
-
-export interface RegisterPayload extends LoginPayload {
-  display_name: string
 }
 
 export interface UploadResponse {
@@ -282,18 +155,6 @@ function normalizeImageCandidate(candidate: ProviderImageLike | undefined): stri
 
 function compactUrls(urls: Array<string | null | undefined>): string[] {
   return urls.filter((url): url is string => typeof url === 'string' && url.length > 0)
-}
-
-function syncPointsFromHeaders(headers: Record<string, unknown>) {
-  const candidate = headers['x-account-points']
-  if (typeof candidate === 'string') {
-    const parsed = Number(candidate)
-    if (Number.isFinite(parsed)) {
-      authBridge.syncAccount({ points: parsed, refreshProfile: true })
-      return parsed
-    }
-  }
-  return undefined
 }
 
 export function normalizeGenerateVideoResponse(payload: unknown): NormalizedGenerateVideoResponse {
@@ -405,27 +266,21 @@ export function normalizeUploadResponse(payload: UploadResponse): NormalizedUplo
 
 export async function generateImage(payload: GenerateImagePayload, options?: RequestOptions) {
   const response = await api.post('/api/generate-image', payload, { signal: options?.signal })
-  const normalized = normalizeGenerateImageResponse(response.data)
-  const points = syncPointsFromHeaders(response.headers as Record<string, unknown>)
-  return { ...normalized, points }
+  return normalizeGenerateImageResponse(response.data)
 }
 
 export async function generateVideo(payload: GenerateVideoPayload, options?: RequestOptions) {
   const response = await api.post('/api/generate-video', payload, { signal: options?.signal })
-  const normalized = normalizeGenerateVideoResponse(response.data)
-  const points = syncPointsFromHeaders(response.headers as Record<string, unknown>)
-  return { ...normalized, points }
+  return normalizeGenerateVideoResponse(response.data)
 }
 
 export async function generateText(payload: GenerateTextPayload, options?: RequestOptions) {
   const response = await api.post('/api/generate-text', payload, { signal: options?.signal })
   const record = typeof response.data === 'object' && response.data !== null ? (response.data as Record<string, unknown>) : {}
-  const points = syncPointsFromHeaders(response.headers as Record<string, unknown>)
   return {
     provider: typeof record.provider === 'string' ? record.provider : undefined,
     text: typeof record.text === 'string' ? record.text : '',
     raw: response.data,
-    points,
   } satisfies NormalizedGenerateTextResponse
 }
 
@@ -449,14 +304,6 @@ export function getRequestErrorMessage(error: unknown, fallback: string) {
   return fallback
 }
 
-export function isUnauthorizedError(error: unknown) {
-  if (!axios.isAxiosError<ApiErrorPayload>(error)) {
-    return false
-  }
-
-  return error.response?.status === 401 && error.response?.data?.error?.code === 'auth_required'
-}
-
 export function isRequestCanceled(error: unknown) {
   return axios.isCancel(error)
 }
@@ -468,63 +315,5 @@ export async function fetchModels(
   const response = await api.get('/api/models', {
     params: { output_modality: outputModality, provider },
   })
-  return response.data
-}
-
-export async function login(payload: LoginPayload) {
-  const response = await api.post<AuthResponse>('/api/auth/login', payload)
-  authBridge.syncAccount({ points: response.data.user.points })
-  return response.data
-}
-
-export async function register(payload: RegisterPayload) {
-  const response = await api.post<AuthResponse>('/api/auth/register', payload)
-  authBridge.syncAccount({ points: response.data.user.points })
-  return response.data
-}
-
-export async function logout() {
-  const response = await api.post<{ success: boolean }>('/api/auth/logout')
-  return response.data
-}
-
-export async function fetchAccountProfile() {
-  const response = await api.get<AccountProfileResponse>('/api/account/profile')
-  authBridge.syncAccount({ points: response.data.user.points })
-  return response.data
-}
-
-export async function fetchAccountSettings() {
-  const response = await api.get<AccountSettingsResponse>('/api/account/settings')
-  if (response.data.user?.points !== undefined) {
-    authBridge.syncAccount({ points: response.data.user.points })
-  }
-  return response.data
-}
-
-export async function updateAccountSettings(payload: UpdateAccountSettingsPayload) {
-  const response = await api.patch<AccountSettingsResponse>('/api/account/settings', payload)
-  if (response.data.user?.points !== undefined) {
-    authBridge.syncAccount({ points: response.data.user.points })
-  }
-  return response.data
-}
-
-export async function fetchAccountPackages() {
-  const response = await api.get<AccountPackagesResponse>('/api/account/packages')
-  authBridge.syncAccount({ points: response.data.user.points })
-  return response.data
-}
-
-export async function createWeChatRechargeOrder(payload: WeChatRechargeOrderRequest) {
-  const response = await api.post<WeChatRechargeOrderResponse>('/api/payments/wechat/orders', payload)
-  return response.data
-}
-
-export async function fetchWeChatRechargeOrder(orderId: string) {
-  const response = await api.get<WeChatRechargeOrderResponse>(`/api/payments/wechat/orders/${orderId}`)
-  if (response.data.user?.points !== undefined) {
-    authBridge.syncAccount({ points: response.data.user.points, refreshProfile: response.data.order.status === 'paid' } satisfies AccountSyncPayload)
-  }
   return response.data
 }

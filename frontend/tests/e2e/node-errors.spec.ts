@@ -23,16 +23,6 @@ async function createNode(page: import('@playwright/test').Page, type: 'image' |
   await page.getByTestId('dock-create-video').click()
 }
 
-async function registerAccount(page: import('@playwright/test').Page) {
-  await page.getByRole('button', { name: '个人中心' }).click()
-  await page.getByRole('button', { name: '注册' }).click()
-  const seed = Date.now().toString().slice(-6)
-  await page.getByLabel('昵称').fill(`E2E${seed}`)
-  await page.getByLabel('邮箱').fill(`e2e${seed}@example.com`)
-  await page.getByLabel('密码').fill('secret123')
-  await page.getByRole('button', { name: '创建账户并进入工作台' }).click()
-  await expect(page.getByRole('button', { name: '总览' })).toBeVisible({ timeout: 15000 })
-}
 
 test.describe('Node error handling', () => {
   test('upload failure shows a visible error message', async ({ page }) => {
@@ -127,7 +117,7 @@ test.describe('Node error handling', () => {
 
     await imageNode.getByRole('button', { name: '生成图像' }).click()
 
-    await page.locator('.react-flow__pane').click({ position: { x: 24, y: 24 } })
+    await page.keyboard.press('Escape')
     await generationResponse
 
     await page.getByRole('button', { name: '生成记录' }).click()
@@ -151,7 +141,6 @@ test.describe('Node error handling', () => {
     })
 
     await resetCanvas(page)
-    await registerAccount(page)
     await createNode(page, 'video')
 
     const videoNode = page.locator('[data-testid^="rf__node-video-node"]').first()
