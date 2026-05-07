@@ -354,7 +354,6 @@ export function ImageNode({ id, data, selected }: { id: string; data: ImageFlowN
               <NodeTooltip label="开始生成图像">
                 <GenerateActionButton
                   label="生成图像"
-                  points={40}
                   onClick={onGenerate}
                   disabled={!data.prompt.trim() || data.isGenerating}
                 />

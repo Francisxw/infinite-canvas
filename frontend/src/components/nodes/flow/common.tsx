@@ -373,7 +373,6 @@ export function NodeNotice({ message, tone = 'error' }: NodeNoticeProps) {
 
 type GenerateActionButtonProps = {
   label: string
-  points: number
   onClick: () => void
   disabled?: boolean
   tone?: 'primary' | 'muted'
@@ -382,7 +381,6 @@ type GenerateActionButtonProps = {
 
 export function GenerateActionButton({
   label,
-  points,
   onClick,
   disabled = false,
   tone = 'primary',
@@ -403,9 +401,6 @@ export function GenerateActionButton({
       <span className="inline-flex items-center gap-1.5">
         <Zap className="h-3.5 w-3.5" />
         <span>{label}</span>
-      </span>
-      <span className={`rounded-full px-2 py-0.5 text-[11px] ${tone === 'primary' ? 'bg-black/14 text-[#0d0f13]' : 'bg-black/20 text-white/86'}`}>
-        {points}
       </span>
     </button>
   )

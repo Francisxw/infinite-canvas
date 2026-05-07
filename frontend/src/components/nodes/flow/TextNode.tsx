@@ -276,7 +276,6 @@ export function TextNode({ id, data, selected }: { id: string; data: TextFlowNod
               <NodeTooltip label="使用 AI 生成文本">
                 <GenerateActionButton
                   label="生成文本"
-                  points={25}
                   ariaLabel="generate text"
                   onClick={onGenerateText}
                   disabled={(!data.prompt?.trim() && !data.linkedPrompt?.trim() && availableMediaPayloads.length === 0) || data.isGenerating}
