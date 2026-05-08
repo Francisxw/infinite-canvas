@@ -1,9 +1,7 @@
-import asyncio
 import logging
-from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Literal
+from typing import Literal
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse
 
 from app.models.requests import (
@@ -12,13 +10,7 @@ from app.models.requests import (
     VideoGenerationRequest,
 )
 from app.rate_limit import limiter
-from app.routers.common import error_response, require_user
-from app.services.account_store import (
-    AccountStoreError,
-    GENERATION_COSTS,
-    PublicUserRecord,
-    account_store,
-)
+from app.routers.common import error_response
 from app.services.providers.base import ProviderError
 from app.services.providers.factory import get_provider
 
@@ -36,61 +28,6 @@ def resolve_modalities(model: str) -> list[str]:
     return ["image"]
 
 
-def success_response(payload: object, current_user: PublicUserRecord) -> JSONResponse:
-    response = JSONResponse(content=payload)
-    response.headers["X-Account-Points"] = str(current_user["points"])
-    response.headers["X-Account-User-Id"] = str(current_user["id"])
-    return response
-
-
-@asynccontextmanager
-async def consume_with_refund(
-    user_id: str,
-    cost_type: Literal["image", "video", "text"],
-    description: str,
-) -> AsyncGenerator[PublicUserRecord, None]:
-    """Context manager that consumes points and refunds on failure.
-
-    Yields the updated user record after consuming points.
-    Automatically refunds points on cancellation or provider errors.
-    """
-    amount = GENERATION_COSTS[cost_type]
-    try:
-        current_user = account_store.consume_points(
-            user_id=user_id,
-            amount=amount,
-            description=f"{cost_type.capitalize()} generation consumed points.",
-        )
-    except AccountStoreError as exc:
-        raise
-
-    try:
-        yield current_user
-    except asyncio.CancelledError:
-        account_store.refund_points(
-            user_id=user_id,
-            amount=amount,
-            description=f"{cost_type.capitalize()} generation cancelled, points refunded.",
-        )
-        raise
-    except ProviderError as exc:
-        account_store.refund_points(
-            user_id=user_id,
-            amount=amount,
-            description=f"{cost_type.capitalize()} generation failed, points refunded.",
-        )
-        logger.warning("%s generation failed with %s", cost_type, exc.code)
-        raise
-    except Exception:
-        account_store.refund_points(
-            user_id=user_id,
-            amount=amount,
-            description=f"{cost_type.capitalize()} generation failed, points refunded.",
-        )
-        logger.exception("Unexpected %s generation failure", cost_type)
-        raise
-
-
 def handle_generation_error(cost_type: str, exc: Exception) -> JSONResponse:
     """Convert generation errors into standardized error responses."""
     if isinstance(exc, ProviderError):
@@ -105,7 +42,6 @@ def handle_generation_error(cost_type: str, exc: Exception) -> JSONResponse:
 async def generate_image(
     request: Request,
     payload: ImageGenerationRequest,
-    current_user: PublicUserRecord = Depends(require_user),
 ):
     provider_payload = {
         "model": payload.model,
@@ -120,17 +56,12 @@ async def generate_image(
     }
 
     try:
-        async with consume_with_refund(
-            str(current_user["id"]), "image", payload.prompt
-        ) as user:
-            client = get_provider(payload.provider, user_id=str(user["id"]))
-            result = await client.generate_image(provider_payload)
-    except AccountStoreError as exc:
-        return error_response(exc.status_code, exc.code, exc.message)
+        client = get_provider(payload.provider)
+        result = await client.generate_image(provider_payload)
     except (ProviderError, Exception) as exc:
         return handle_generation_error("image", exc)
 
-    return success_response(result, user)
+    return JSONResponse(content=result)
 
 
 @router.post("/generate-video")
@@ -138,7 +69,6 @@ async def generate_image(
 async def generate_video(
     request: Request,
     payload: VideoGenerationRequest,
-    current_user: PublicUserRecord = Depends(require_user),
 ):
     provider_payload = {
         "model": payload.model,
@@ -154,17 +84,12 @@ async def generate_video(
     }
 
     try:
-        async with consume_with_refund(
-            str(current_user["id"]), "video", payload.prompt
-        ) as user:
-            client = get_provider(payload.provider, user_id=str(user["id"]))
-            result = await client.generate_video(provider_payload)
-    except AccountStoreError as exc:
-        return error_response(exc.status_code, exc.code, exc.message)
+        client = get_provider(payload.provider)
+        result = await client.generate_video(provider_payload)
     except (ProviderError, Exception) as exc:
         return handle_generation_error("video", exc)
 
-    return success_response(result, user)
+    return JSONResponse(content=result)
 
 
 @router.post("/generate-text")
@@ -172,7 +97,6 @@ async def generate_video(
 async def generate_text(
     request: Request,
     payload: TextGenerationRequest,
-    current_user: PublicUserRecord = Depends(require_user),
 ):
     content = payload.prompt
     if isinstance(content, str):
@@ -187,19 +111,12 @@ async def generate_text(
     }
 
     try:
-        async with consume_with_refund(
-            str(current_user["id"]),
-            "text",
-            payload.prompt if isinstance(payload.prompt, str) else "Mixed content",
-        ) as user:
-            client = get_provider(payload.provider, user_id=str(user["id"]))
-            result = await client.generate_text(provider_payload)
-    except AccountStoreError as exc:
-        return error_response(exc.status_code, exc.code, exc.message)
+        client = get_provider(payload.provider)
+        result = await client.generate_text(provider_payload)
     except (ProviderError, Exception) as exc:
         return handle_generation_error("text", exc)
 
-    return success_response(result, user)
+    return JSONResponse(content=result)
 
 
 @router.get("/models")

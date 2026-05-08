@@ -1,13 +1,10 @@
-from __future__ import annotations
-
-from fastapi import APIRouter, Depends, File, Request, UploadFile
+from fastapi import APIRouter, File, Request, UploadFile
 from fastapi.responses import JSONResponse
 
 from app.rate_limit import limiter
 from app.config import get_settings
 from app.models.responses import UploadResponse
-from app.routers.common import error_response, require_user
-from app.services.account_store import PublicUserRecord
+from app.routers.common import error_response
 from app.services.file_storage import (
     file_extension_allowed,
     media_kind_matches_content_type,
@@ -22,7 +19,6 @@ router = APIRouter(prefix="/api", tags=["upload"])
 async def upload_file(
     request: Request,
     file: UploadFile = File(...),
-    current_user: PublicUserRecord = Depends(require_user),
 ) -> UploadResponse | JSONResponse:
     settings = get_settings()
 

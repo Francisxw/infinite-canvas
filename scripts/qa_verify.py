@@ -164,47 +164,27 @@ def main():
 
         print(f"  Result: {result3}")
 
-        # 4. OPENROUTER SETTINGS IN PERSONAL CENTER
-        print("\n[4] OPENROUTER SETTINGS")
+        # 4. ANONYMOUS MODE DOCK CHECK
+        print("\n[4] ANONYMOUS MODE DOCK")
         page.goto(BASE_URL, wait_until="networkidle")
         page.wait_for_timeout(2000)
 
         profile_btn = page.locator('[aria-label="个人中心"]').first
-        if profile_btn.count() > 0:
-            print("  Clicking personal center button...")
-            profile_btn.click()
-            page.wait_for_timeout(2000)
-            page.screenshot(path=artifact_path("v5_06_personal_center.png"))
+        has_profile = profile_btn.count() > 0
+        print(f"  Personal center button present: {has_profile}")
 
-            # Check for OpenRouter section
-            page_html = page.content()
-            has_openrouter = (
-                "openrouter" in page_html.lower() or "OpenRouter" in page_html
-            )
-            has_custom_config = "自定义配置" in page_html
-            has_api_key = "api" in page_html.lower() and "key" in page_html.lower()
+        plus_btn = page.locator('[aria-label="新建节点"]').first
+        has_plus = plus_btn.count() > 0
+        print(f"  Create node button present: {has_plus}")
 
-            print(f"  OpenRouter mentioned: {has_openrouter}")
-            print(f"  Custom config section: {has_custom_config}")
-            print(f"  API key related: {has_api_key}")
+        page.screenshot(path=artifact_path("v5_06_dock.png"))
 
-            # Try scrolling the panel
-            panel = page.locator('[class*="panel"]').last
-            if panel:
-                panel.evaluate("el => el.scrollTop = el.scrollHeight")
-                page.wait_for_timeout(500)
-                page.screenshot(
-                    path=artifact_path("v5_07_personal_center_scrolled.png")
-                )
-
-            if has_openrouter or has_custom_config:
-                result4 = "PASS: OpenRouter settings section found"
-            else:
-                result4 = "FAIL: OpenRouter settings not found"
+        if has_profile:
+            result4 = "FAIL: Personal center button should not be exposed in anonymous mode"
+        elif not has_plus:
+            result4 = "FAIL: Create node button missing from dock"
         else:
-            result4 = "FAIL: Personal center button not found"
-
-        print(f"  Result: {result4}")
+            result4 = "PASS: Anonymous dock confirmed (no profile, has create)"
 
         # Final screenshot
         page.screenshot(path=artifact_path("v5_08_final.png"))
@@ -218,7 +198,7 @@ def main():
     print(f"  1. Blank initial canvas: {result1}")
     print(f"  2. Image node affordances: {result2}")
     print(f"  3. Text node scrollbar: {result3}")
-    print(f"  4. OpenRouter settings: {result4}")
+    print(f"  4. Anonymous mode dock: {result4}")
     print("=" * 60)
 
     return 0

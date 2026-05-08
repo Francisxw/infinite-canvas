@@ -61,20 +61,10 @@ docker compose up
 
 - **可视化 AI 画布**：基于 React Flow 的节点编辑、连线工作流、媒体串联
 - **AI 集成**：多 Provider 支持（OpenRouter、OpenAI）
-- **账户系统**：注册登录、会话持久化、积分钱包、账单历史、充值流程
-- **微信支付**：Native 扫码下单，后端回调确认
 - **文件上传**：支持图片、视频、文本文件
 - **现代化技术栈**：React 18 + FastAPI + TypeScript + Python 3.12
 - **响应式设计**：支持桌面和移动端
 - **工作室导航**：左上菜单栏、浮动创建 Dock、小地图、缩放面板、任务条
-
-## 账户与存储说明
-
-- 后端账户数据存储于 SQLite：`backend/.data/account_store.db`
-- 密码使用 `passlib` 的 `pbkdf2_sha256` 哈希存储
-- 旧版 JSON 数据会在首次访问时自动迁移至 SQLite
-- 充值流程已对接微信支付 Native；正式上线需要商户证书和公网 HTTPS 回调地址
-- 旧版直接充值接口已废弃，前端和后端均使用微信下单 + 回调确认
 
 ## 部署到云端
 
@@ -95,19 +85,10 @@ docker compose up
 | 接口 | 方法 | 说明 |
 |------|------|------|
 | `/api/health` | GET | 健康检查 |
-| `/api/auth/register` | POST | 用户注册 |
-| `/api/auth/login` | POST | 用户登录 |
-| `/api/auth/logout` | POST | 退出登录 |
-| `/api/account/profile` | GET | 获取用户信息 |
-| `/api/account/packages` | GET | 获取充值套餐 |
-| `/api/account/settings` | GET/PATCH | 账户设置 |
-| `/api/payments/wechat/orders` | POST | 创建微信支付订单 |
-| `/api/payments/wechat/orders/{id}` | GET | 查询订单状态 |
-| `/api/payments/wechat/notify` | POST | 微信支付回调 |
 | `/api/upload` | POST | 文件上传 |
-| `/api/generate-text` | POST | 文本生成（消耗 25 积分） |
-| `/api/generate-image` | POST | 图像生成（消耗 40 积分） |
-| `/api/generate-video` | POST | 视频生成（消耗 60 积分） |
+| `/api/generate-text` | POST | 文本生成 |
+| `/api/generate-image` | POST | 图像生成 |
+| `/api/generate-video` | POST | 视频生成 |
 | `/api/models` | GET | 获取可用模型列表 |
 
 ## 参与贡献

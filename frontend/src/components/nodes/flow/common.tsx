@@ -2,7 +2,6 @@ import { CheckCheck, Loader, Trash2, Zap } from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties, type Dispatch, type PointerEvent as ReactPointerEvent, type ReactNode, type SetStateAction } from 'react'
 import { Handle, Position, useReactFlow, useUpdateNodeInternals } from '@xyflow/react'
 import type { AnyFlowNode, FlowPayload } from './types'
-import { useAccountStore } from '../../../stores/accountStore'
 
 export const EMPTY_TEXT_PLACEHOLDER = '双击输入文本，或使用下方 AI 生成'
 
@@ -374,7 +373,6 @@ export function NodeNotice({ message, tone = 'error' }: NodeNoticeProps) {
 
 type GenerateActionButtonProps = {
   label: string
-  points: number
   onClick: () => void
   disabled?: boolean
   tone?: 'primary' | 'muted'
@@ -383,16 +381,11 @@ type GenerateActionButtonProps = {
 
 export function GenerateActionButton({
   label,
-  points,
   onClick,
   disabled = false,
   tone = 'primary',
   ariaLabel,
 }: GenerateActionButtonProps) {
-  const profile = useAccountStore((state) => state.profile)
-  const isAuthenticated = useAccountStore((state) => Boolean(state.token && state.profile))
-  const canAfford = (profile?.points ?? 0) >= points
-  const effectiveDisabled = disabled || !isAuthenticated || !canAfford
   const toneClass = tone === 'primary'
     ? 'border-white/16 bg-[linear-gradient(120deg,#e8eaee,#b9bdc5)] text-[#0d0f13] hover:brightness-105'
     : 'border-white/12 bg-white/10 text-white/84 hover:bg-white/14'
@@ -402,16 +395,12 @@ export function GenerateActionButton({
       type="button"
       aria-label={ariaLabel ?? label}
       onClick={onClick}
-      disabled={effectiveDisabled}
-      title={!isAuthenticated ? '请先登录账号' : canAfford ? undefined : '积分不足，请先充值'}
+      disabled={disabled}
       className={`nodrag nopan inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-45 ${toneClass}`}
     >
       <span className="inline-flex items-center gap-1.5">
         <Zap className="h-3.5 w-3.5" />
         <span>{label}</span>
-      </span>
-      <span className={`rounded-full px-2 py-0.5 text-[11px] ${tone === 'primary' ? 'bg-black/14 text-[#0d0f13]' : 'bg-black/20 text-white/86'}`}>
-        {points}
       </span>
     </button>
   )

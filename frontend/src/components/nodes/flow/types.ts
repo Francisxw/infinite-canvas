@@ -11,21 +11,6 @@ export type FlowPayload = {
   previewUrl?: string
 }
 
-export type OpenRouterProviderMode = 'platform' | 'custom'
-
-export type OpenRouterPreferredModels = {
-  text: string | null
-  image: string | null
-  video: string | null
-}
-
-export type OpenRouterAccountSettings = {
-  mode: OpenRouterProviderMode
-  has_custom_key: boolean
-  key_mask: string | null
-  preferred_models: OpenRouterPreferredModels
-}
-
 export type TextNodeData = {
   w: number
   h: number

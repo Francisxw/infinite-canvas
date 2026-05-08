@@ -333,7 +333,6 @@ export function VideoNode({ id, data, selected }: { id: string; data: VideoFlowN
               <NodeTooltip label="调用视频生成接口">
                 <GenerateActionButton
                   label="生成视频"
-                  points={60}
                   onClick={onGenerate}
                   disabled={!prompt.trim() || data.isGenerating}
                 />
