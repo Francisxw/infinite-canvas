@@ -1,0 +1,18 @@
+[project]
+name = "api-workbench"
+version = "0.1.0"
+description = "FastAPI API workbench"
+requires-python = ">=3.10"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.6.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"

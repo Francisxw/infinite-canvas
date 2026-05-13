@@ -1,0 +1,1536 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinite Canvas | 系统设置</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+        :root {
+            --bg-base: #f7f7f7;
+            --panel-bg: rgba(255, 255, 255, 0.96);
+            --panel-soft: #fafafa;
+            --panel-muted: #f5f5f5;
+            --text-main: #171717;
+            --text-soft: #737373;
+            --text-faint: #a3a3a3;
+            --border-soft: rgba(15, 23, 42, 0.07);
+            --border-strong: rgba(15, 23, 42, 0.12);
+            --shadow-soft: 0 12px 30px rgba(15, 23, 42, 0.04);
+            --easing: cubic-bezier(0.4, 0, 0.2, 1);
+            --max-w: 1040px;
+        }
+
+        *::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+            background: transparent;
+        }
+
+        *::-webkit-scrollbar-track {
+            background: transparent;
+            border: none;
+        }
+
+        *::-webkit-scrollbar-thumb {
+            background-color: #d8d8d8;
+            border: 3px solid transparent;
+            border-right-width: 5px;
+            background-clip: padding-box;
+            border-radius: 10px;
+        }
+
+        *::-webkit-scrollbar-thumb:hover {
+            background-color: #c0c0c0;
+        }
+
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #d8d8d8 transparent;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            margin: 0;
+            background:
+                radial-gradient(circle at top left, rgba(255, 255, 255, 0.82), transparent 30%),
+                linear-gradient(180deg, #fbfbfb 0%, var(--bg-base) 100%);
+            font-family: 'Inter', -apple-system, 'PingFang SC', sans-serif;
+            color: var(--text-main);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .page-shell {
+            max-width: var(--max-w);
+            margin: 0 auto;
+            padding: 52px 32px 80px;
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-soft);
+            border-radius: 30px;
+            box-shadow: var(--shadow-soft);
+            backdrop-filter: blur(14px);
+        }
+
+        .hero-panel {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-panel::after {
+            content: '';
+            position: absolute;
+            right: -100px;
+            bottom: -120px;
+            width: 240px;
+            height: 240px;
+            background: radial-gradient(circle, rgba(15, 23, 42, 0.05), transparent 70%);
+            pointer-events: none;
+        }
+
+        .eyebrow,
+        .section-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.28em;
+            text-transform: uppercase;
+            color: var(--text-faint);
+        }
+
+        .meta-pill,
+        .summary-card,
+        .field-card,
+        .status-card,
+        .workflow-card,
+        .notice-card,
+        .state-card {
+            border: 1px solid rgba(15, 23, 42, 0.06);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), var(--panel-soft) 100%);
+        }
+
+        .meta-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            border-radius: 999px;
+            padding: 12px 16px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: #525252;
+        }
+
+        .meta-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: #a3a3a3;
+            flex: 0 0 auto;
+        }
+
+        .meta-pill.loading .meta-dot { background: #a3a3a3; }
+        .meta-pill.success .meta-dot { background: #10b981; }
+        .meta-pill.error .meta-dot { background: #ef4444; }
+
+        .summary-card,
+        .status-card,
+        .workflow-card,
+        .notice-card,
+        .state-card,
+        .field-card {
+            border-radius: 24px;
+        }
+
+        .summary-card {
+            padding: 18px 20px;
+        }
+
+        .section-block + .section-block {
+            padding-top: 30px;
+            border-top: 1px solid var(--border-soft);
+        }
+
+        .summary-value {
+            margin-top: 10px;
+            font-size: 24px;
+            line-height: 1.05;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            word-break: break-word;
+        }
+
+        .field-card {
+            padding: 18px;
+        }
+
+        .field-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .field-input,
+        .field-textarea {
+            width: 100%;
+            border: 1px solid #e9edf2;
+            border-radius: 18px;
+            background: #ffffff;
+            color: var(--text-main);
+            outline: none;
+            transition: border-color 0.22s var(--easing), box-shadow 0.22s var(--easing), background 0.22s var(--easing);
+        }
+
+        .field-input {
+            height: 46px;
+            padding: 0 14px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .field-textarea {
+            min-height: 108px;
+            padding: 14px;
+            resize: vertical;
+            font-size: 14px;
+            line-height: 1.65;
+            font-weight: 500;
+        }
+
+        .field-input:focus,
+        .field-textarea:focus {
+            border-color: #111827;
+            box-shadow: 0 0 0 1px #111827;
+        }
+
+        .field-input.dirty,
+        .field-textarea.dirty {
+            background: #fffef5;
+            border-color: #d4d4aa;
+        }
+
+        .field-hint {
+            margin-top: 10px;
+            font-size: 12px;
+            line-height: 1.6;
+            color: var(--text-soft);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .badge.safe {
+            background: #f5f5f5;
+            color: #737373;
+        }
+
+        .badge.online {
+            background: #ecfdf5;
+            color: #047857;
+        }
+
+        .badge.offline {
+            background: #fef2f2;
+            color: #b91c1c;
+        }
+
+        .status-card {
+            padding: 16px 18px;
+        }
+
+        .status-queues {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .queue-chip {
+            border-radius: 16px;
+            background: #ffffff;
+            border: 1px solid rgba(15, 23, 42, 0.06);
+            padding: 12px 13px;
+        }
+
+        .notice-card {
+            padding: 14px 16px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .notice-card.info {
+            background: linear-gradient(180deg, #ffffff, #f8fafc 100%);
+            color: #475569;
+        }
+
+        .notice-card.success {
+            background: linear-gradient(180deg, #f0fdf4, #ecfdf5 100%);
+            color: #166534;
+            border-color: rgba(34, 197, 94, 0.16);
+        }
+
+        .notice-card.error {
+            background: linear-gradient(180deg, #fff5f5, #fef2f2 100%);
+            color: #b91c1c;
+            border-color: rgba(239, 68, 68, 0.15);
+        }
+
+        .state-card {
+            padding: 28px;
+            text-align: center;
+        }
+
+        .state-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 20px;
+            background: var(--panel-muted);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 14px;
+        }
+
+        .workflow-card {
+            padding: 14px 16px;
+        }
+
+        /* ComfyUI Instance Manager */
+        .comfy-instance-card {
+            border: 1px solid rgba(15, 23, 42, 0.06);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), var(--panel-soft) 100%);
+            border-radius: 20px;
+            padding: 16px 18px;
+            transition: border-color 0.22s var(--easing), box-shadow 0.22s var(--easing);
+        }
+        .comfy-instance-card:hover {
+            border-color: rgba(15, 23, 42, 0.12);
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+        }
+        .comfy-instance-card.editing {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+        }
+        .comfy-instance-card .instance-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .comfy-instance-card .instance-addr {
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-main);
+            word-break: break-all;
+        }
+        .comfy-instance-card .instance-idx {
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--text-faint);
+            min-width: 28px;
+        }
+        .comfy-instance-card .instance-actions {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        .comfy-instance-card .instance-queues {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .comfy-instance-card .queue-chip-sm {
+            border-radius: 12px;
+            background: #ffffff;
+            border: 1px solid rgba(15, 23, 42, 0.06);
+            padding: 8px 10px;
+        }
+        .comfy-instance-card .queue-chip-sm .queue-label {
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--text-faint);
+        }
+        .comfy-instance-card .queue-chip-sm .queue-val {
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            margin-top: 4px;
+        }
+        .comfy-instance-card .instance-edit-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-top: 12px;
+        }
+        .comfy-instance-card .instance-edit-row .field-input {
+            height: 38px;
+            font-size: 13px;
+        }
+        .comfy-instance-card .instance-error {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #b91c1c;
+        }
+        .comfy-instance-card .instance-probe-time {
+            font-size: 10px;
+            color: var(--text-faint);
+            margin-top: 6px;
+        }
+        .comfy-add-panel {
+            border: 2px dashed rgba(15, 23, 42, 0.1);
+            border-radius: 20px;
+            padding: 18px;
+            background: rgba(255, 255, 255, 0.5);
+            transition: border-color 0.22s var(--easing);
+        }
+        .comfy-add-panel:focus-within {
+            border-color: #3b82f6;
+        }
+        .comfy-empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(15, 23, 42, 0.06);
+            background: var(--panel-soft);
+        }
+        .comfy-empty-state .state-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 16px;
+            background: var(--panel-muted);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+        }
+        .icon-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            background: #ffffff;
+            color: var(--text-soft);
+            cursor: pointer;
+            transition: all 0.2s var(--easing);
+            flex-shrink: 0;
+        }
+        .icon-btn:hover {
+            color: var(--text-main);
+            border-color: rgba(15, 23, 42, 0.16);
+            background: #fafafa;
+        }
+        .icon-btn.danger:hover {
+            color: #b91c1c;
+            border-color: rgba(239, 68, 68, 0.2);
+            background: #fef2f2;
+        }
+        .icon-btn.primary {
+            color: #2563eb;
+            border-color: rgba(37, 99, 235, 0.2);
+        }
+        .icon-btn.primary:hover {
+            color: #1d4ed8;
+            background: #eff6ff;
+        }
+        .icon-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .comfy-feedback {
+            border-radius: 14px;
+            padding: 10px 14px;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        .comfy-feedback.success {
+            background: #f0fdf4;
+            color: #166534;
+            border: 1px solid rgba(34, 197, 94, 0.16);
+        }
+        .comfy-feedback.error {
+            background: #fff5f5;
+            color: #b91c1c;
+            border: 1px solid rgba(239, 68, 68, 0.15);
+        }
+        .comfy-feedback.info {
+            background: #f8fafc;
+            color: #475569;
+            border: 1px solid rgba(15, 23, 42, 0.06);
+        }
+
+        .mono {
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        .action-btn,
+        .ghost-btn {
+            height: 44px;
+            border-radius: 999px;
+            padding: 0 18px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            transition: transform 0.22s var(--easing), box-shadow 0.22s var(--easing), background 0.22s var(--easing), color 0.22s var(--easing), border-color 0.22s var(--easing);
+        }
+
+        .action-btn {
+            background: #111827;
+            color: #ffffff;
+        }
+
+        .action-btn:hover:not(:disabled) {
+            background: #000000;
+            transform: translateY(-1px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+        }
+
+        .ghost-btn {
+            background: #ffffff;
+            color: #525252;
+            border: 1px solid #e5e7eb;
+        }
+
+        .ghost-btn:hover:not(:disabled) {
+            color: #111827;
+            border-color: #cbd5e1;
+            background: #fafafa;
+        }
+
+        .action-btn:disabled,
+        .ghost-btn:disabled {
+            opacity: 0.52;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .skeleton {
+            position: relative;
+            overflow: hidden;
+            background: #f1f1f1;
+            border-radius: 999px;
+        }
+
+        .skeleton::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            transform: translateX(-100%);
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+            animation: shimmer 1.4s infinite;
+        }
+
+        @keyframes shimmer {
+            100% {
+                transform: translateX(100%);
+            }
+        }
+
+        @media (max-width: 900px) {
+            .page-shell {
+                padding: 28px 18px 52px;
+            }
+
+            .panel {
+                border-radius: 24px;
+            }
+
+            .field-card,
+            .summary-card,
+            .status-card,
+            .workflow-card,
+            .notice-card,
+            .state-card {
+                border-radius: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page-shell">
+        <header class="mb-8">
+            <section class="panel hero-panel p-7 md:p-9">
+                <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                    <div class="max-w-2xl space-y-3">
+                        <p class="eyebrow">Infinite Canvas / Settings</p>
+                        <div>
+                            <h1 class="text-4xl md:text-[46px] font-extrabold tracking-[-0.06em]">系统设置</h1>
+                            <p class="mt-3 text-sm md:text-[15px] leading-7 text-neutral-500">
+                                直接编辑本地环境变量，查看 ComfyUI 连接状态，并保存到 API/.env。页面只保留必要配置，不再做信息看板。
+                            </p>
+                        </div>
+                    </div>
+                    <div id="pageMeta" class="meta-pill loading">
+                        <span class="meta-dot"></span>
+                        <span>Loading settings</span>
+                    </div>
+                </div>
+                <div id="summaryGrid" class="mt-7 grid grid-cols-1 gap-4 md:grid-cols-2"></div>
+            </section>
+        </header>
+
+        <main class="space-y-6">
+            <form id="settingsForm" class="panel p-6 md:p-8 space-y-8" novalidate>
+                <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                    <div>
+                        <div class="section-kicker"><i data-lucide="sliders-horizontal" class="h-3.5 w-3.5"></i><span>Settings</span></div>
+                        <h2 class="mt-3 text-2xl font-extrabold tracking-[-0.05em]">集中配置</h2>
+                        <p class="mt-2 text-sm leading-6 text-neutral-500">把 ComfyUI、核心环境变量、摘要和工作流放在同一页，减少来回查看与侧栏分散感。</p>
+                    </div>
+                    <div class="flex flex-wrap gap-3">
+                        <button id="resetButton" type="button" class="ghost-btn">Reset</button>
+                        <button id="saveButton" type="submit" class="action-btn">Save Changes</button>
+                    </div>
+                </div>
+
+                <div id="feedbackArea" class="space-y-3"></div>
+
+                <section class="section-block space-y-4">
+                    <div>
+                        <div class="section-kicker"><i data-lucide="server" class="h-3.5 w-3.5"></i><span>ComfyUI</span></div>
+                        <h3 class="mt-3 text-xl font-extrabold tracking-[-0.04em]">ComfyUI 实例管理</h3>
+                        <p class="mt-2 text-sm leading-6 text-neutral-500">添加、编辑或删除 ComfyUI 后端实例。修改会即时保存到 API/.env，无需重启服务。</p>
+                    </div>
+
+                    <!-- Instance list -->
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="text-[10px] font-extrabold uppercase tracking-[0.28em] text-neutral-400">实例列表</div>
+                            <div id="comfyStatusMeta" class="text-xs font-semibold text-neutral-400">检查中…</div>
+                        </div>
+                        <div id="comfyInstanceList" class="space-y-3"></div>
+                    </div>
+
+                    <!-- Add instance form -->
+                    <div class="comfy-add-panel">
+                        <div class="text-[10px] font-extrabold uppercase tracking-[0.28em] text-neutral-400 mb-3">添加新实例</div>
+                        <div class="flex gap-3 items-end">
+                            <div class="flex-1">
+                                <input id="comfyNewAddress" class="field-input mono" type="text" placeholder="例如 127.0.0.1:8188" />
+                            </div>
+                            <button id="comfyAddBtn" type="button" class="action-btn" style="height:46px;white-space:nowrap;">
+                                <i data-lucide="plus" class="h-4 w-4 mr-1 inline-block" style="vertical-align:-2px;"></i>添加
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Feedback area for ComfyUI operations -->
+                    <div id="comfyFeedback"></div>
+                </section>
+
+                <section class="section-block space-y-5">
+                    <div>
+                        <div class="section-kicker"><i data-lucide="key-round" class="h-3.5 w-3.5"></i><span>Core Env</span></div>
+                        <h3 class="mt-3 text-xl font-extrabold tracking-[-0.04em]">核心环境变量</h3>
+                        <p class="mt-2 text-sm leading-6 text-neutral-500">保留服务地址、API Key、默认模型和运行参数，编辑逻辑与字段名保持不变。</p>
+                    </div>
+
+                    <div class="space-y-6">
+                        <section class="space-y-3">
+                            <div class="text-[10px] font-extrabold uppercase tracking-[0.28em] text-neutral-400">服务与鉴权</div>
+                            <div id="accessFields" class="grid grid-cols-1 gap-4 md:grid-cols-2"></div>
+                        </section>
+
+                        <section class="space-y-3">
+                            <div class="text-[10px] font-extrabold uppercase tracking-[0.28em] text-neutral-400">模型与默认值</div>
+                            <div id="modelFields" class="grid grid-cols-1 gap-4 md:grid-cols-2"></div>
+                        </section>
+
+                        <section class="space-y-3">
+                            <div class="text-[10px] font-extrabold uppercase tracking-[0.28em] text-neutral-400">行为与超时</div>
+                            <div id="runtimeFields" class="grid grid-cols-1 gap-4 md:grid-cols-2"></div>
+                        </section>
+
+                        <div class="section-header mt-8">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="workflow" class="w-4 h-4 text-neutral-400"></i>
+                                <h3 class="text-xs font-bold uppercase tracking-[0.2em] text-neutral-500">Workflow Configuration</h3>
+                            </div>
+                        </div>
+                        <div id="workflowFields" class="grid grid-cols-1 gap-4 md:grid-cols-2"></div>
+                    </div>
+                </section>
+
+                <section class="section-block space-y-5">
+                    <div>
+                        <div class="section-kicker"><i data-lucide="shield-check" class="h-3.5 w-3.5"></i><span>Read Only</span></div>
+                        <h3 class="mt-3 text-xl font-extrabold tracking-[-0.04em]">当前环境摘要</h3>
+                        <p class="mt-2 text-sm leading-6 text-neutral-500">只显示后端标记为安全的摘要字段，放回主流程里统一查看。</p>
+                    </div>
+                    <div id="envSummary" class="space-y-3"></div>
+                </section>
+
+                <section class="section-block space-y-5">
+                    <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                        <div>
+                            <div class="section-kicker"><i data-lucide="folder-open" class="h-3.5 w-3.5"></i><span>Workflows</span></div>
+                            <h3 class="mt-3 text-xl font-extrabold tracking-[-0.04em]">已识别工作流</h3>
+                            <p class="mt-2 text-sm leading-6 text-neutral-500">继续展示当前 workflows 目录中的 JSON 文件，不再单独放在右侧栏。</p>
+                        </div>
+                        <div id="workflowMeta" class="text-xs font-semibold text-neutral-400">等待数据…</div>
+                    </div>
+                    <div id="workflowList" class="space-y-3"></div>
+                </section>
+            </form>
+        </main>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        const FIELD_GROUPS = {
+            comfy: [],
+            access: ['comfly_base_url', 'comfly_api_key'],
+            models: ['chat_models', 'image_models', 'chat_model', 'image_model'],
+            runtime: ['system_prompt', 'max_history_messages', 'request_timeout', 'image_poll_interval'],
+            workflows: ['workflow_zimage', 'workflow_enhance', 'workflow_upscale', 'workflow_angle', 'workflow_klein', 'workflow_canvas_edit']
+        };
+
+        const FIELD_META = {
+            comfly_base_url: {
+                label: 'COMFLY_BASE_URL',
+                hint: 'Comfly 服务基础地址。修改后通常需要重启后端。',
+                type: 'text',
+                mono: true
+            },
+            comfly_api_key: {
+                label: 'COMFLY_API_KEY',
+                hint: '用于在线能力的 API Key。',
+                type: 'password',
+                sensitive: true,
+                mono: true
+            },
+            system_prompt: {
+                label: 'SYSTEM_PROMPT',
+                hint: '默认系统提示词。',
+                type: 'textarea',
+                rows: 5
+            },
+            max_history_messages: {
+                label: 'MAX_HISTORY_MESSAGES',
+                hint: '保留的历史消息数量上限。',
+                type: 'number',
+                step: '1'
+            },
+            request_timeout: {
+                label: 'REQUEST_TIMEOUT',
+                hint: '后端请求超时时间，单位秒。',
+                type: 'number',
+                step: '0.1'
+            },
+            image_poll_interval: {
+                label: 'IMAGE_POLL_INTERVAL',
+                hint: '图像轮询间隔，单位秒。',
+                type: 'number',
+                step: '0.1'
+            },
+            chat_models: {
+                label: 'CHAT_MODELS',
+                hint: '可用聊天模型列表，用逗号分隔。',
+                type: 'textarea',
+                rows: 3,
+                mono: true
+            },
+            image_models: {
+                label: 'IMAGE_MODELS',
+                hint: '可用图像模型列表，用逗号分隔。',
+                type: 'textarea',
+                rows: 3,
+                mono: true
+            },
+            chat_model: {
+                label: 'CHAT_MODEL',
+                hint: '默认聊天模型。',
+                type: 'text',
+                mono: true
+            },
+            image_model: {
+                label: 'IMAGE_MODEL',
+                hint: '默认图像模型。',
+                type: 'text',
+                mono: true
+            },
+            workflow_zimage: {
+                label: 'Text-to-Image Workflow',
+                hint: 'Workflow file for text-to-image generation (zimage module)',
+                type: 'select'
+            },
+            workflow_enhance: {
+                label: 'Enhancement Workflow',
+                hint: 'Workflow file for detail enhancement (Phase 1)',
+                type: 'select'
+            },
+            workflow_upscale: {
+                label: 'Upscale Workflow',
+                hint: 'Workflow file for image upscaling (Phase 2)',
+                type: 'select'
+            },
+            workflow_angle: {
+                label: 'Angle Control Workflow',
+                hint: 'Workflow file for angle/perspective control',
+                type: 'select'
+            },
+            workflow_klein: {
+                label: 'Image Editing Workflow',
+                hint: 'Workflow file for image editing (Klein module)',
+                type: 'select'
+            },
+            workflow_canvas_edit: {
+                label: 'Canvas Edit Workflow',
+                hint: 'Workflow file for canvas image editing',
+                type: 'select'
+            }
+        };
+
+        const summaryGrid = document.getElementById('summaryGrid');
+        const envSummary = document.getElementById('envSummary');
+        const workflowList = document.getElementById('workflowList');
+        const workflowMeta = document.getElementById('workflowMeta');
+        const pageMeta = document.getElementById('pageMeta');
+        const feedbackArea = document.getElementById('feedbackArea');
+        const comfyInstanceList = document.getElementById('comfyInstanceList');
+        const comfyStatusMeta = document.getElementById('comfyStatusMeta');
+        const comfyNewAddress = document.getElementById('comfyNewAddress');
+        const comfyAddBtn = document.getElementById('comfyAddBtn');
+        const comfyFeedback = document.getElementById('comfyFeedback');
+        const accessFields = document.getElementById('accessFields');
+        const modelFields = document.getElementById('modelFields');
+        const runtimeFields = document.getElementById('runtimeFields');
+        const workflowFields = document.getElementById('workflowFields');
+        const settingsForm = document.getElementById('settingsForm');
+        const saveButton = document.getElementById('saveButton');
+        const resetButton = document.getElementById('resetButton');
+
+        let initialEditable = {};
+        let currentEditable = {};
+        let latestEnv = {};
+        let latestStatus = [];
+        let latestWorkflows = [];
+        let comfyInstances = [];
+        let isLoading = false;
+        let isSaving = false;
+        let comfyEditingIdx = -1;
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function formatLabel(key) {
+            return String(key || '')
+                .replace(/_/g, ' ')
+                .replace(/\b\w/g, (ch) => ch.toUpperCase());
+        }
+
+        function normalizeEditableValue(key, value) {
+            if (value === null || value === undefined) return '';
+            if (['max_history_messages', 'request_timeout', 'image_poll_interval'].includes(key)) {
+                return String(value);
+            }
+            return String(value);
+        }
+
+        function parseFieldValue(key, value) {
+            const trimmed = typeof value === 'string' ? value.trim() : value;
+            if (trimmed === '') return null;
+            if (key === 'max_history_messages') return Number.parseInt(trimmed, 10);
+            if (key === 'request_timeout' || key === 'image_poll_interval') return Number.parseFloat(trimmed);
+            return value;
+        }
+
+        function isDirty() {
+            const keys = new Set([...Object.keys(initialEditable), ...Object.keys(currentEditable)]);
+            for (const key of keys) {
+                if ((initialEditable[key] ?? '') !== (currentEditable[key] ?? '')) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function setMeta(text, tone = 'loading') {
+            pageMeta.className = `meta-pill ${tone}`;
+            pageMeta.innerHTML = `<span class="meta-dot"></span><span>${escapeHtml(text)}</span>`;
+        }
+
+        function setFeedback(messages) {
+            const items = Array.isArray(messages) ? messages.filter(Boolean) : [];
+            if (!items.length) {
+                feedbackArea.innerHTML = '';
+                return;
+            }
+            feedbackArea.innerHTML = items.map((item) => `
+                <div class="notice-card ${escapeHtml(item.tone || 'info')}">${escapeHtml(item.text || '')}</div>
+            `).join('');
+        }
+
+        function getFormValue(key) {
+            const element = document.querySelector(`[data-setting-key="${key}"]`);
+            return element ? element.value : '';
+        }
+
+        function buildField(key, value) {
+            const meta = FIELD_META[key] || { label: formatLabel(key), type: 'text' };
+            const normalized = normalizeEditableValue(key, value);
+
+            if (meta.type === 'select') {
+                return `
+                    <article class="field-card">
+                        <label class="block">
+                            <div class="field-label">
+                                <div>
+                                    <div class="text-[10px] font-extrabold uppercase tracking-[0.28em] text-neutral-400">${escapeHtml(meta.label)}</div>
+                                </div>
+                                <span class="badge safe">Editable</span>
+                            </div>
+                            <select class="field-input" data-setting-key="${escapeHtml(key)}" data-default-value="${escapeHtml(normalized)}">
+                                <option value="">Loading...</option>
+                            </select>
+                            <div class="field-hint">${escapeHtml(meta.hint || '')}</div>
+                        </label>
+                    </article>
+                `;
+            }
+
+            const tag = meta.type === 'textarea' ? 'textarea' : 'input';
+            const classes = `${tag === 'textarea' ? 'field-textarea' : 'field-input'}${meta.mono ? ' mono' : ''}`;
+            const badge = meta.sensitive ? '<span class="badge safe">Sensitive</span>' : '<span class="badge safe">Editable</span>';
+            const attrs = [];
+
+            if (tag === 'input') {
+                attrs.push(`type="${escapeHtml(meta.type || 'text')}"`);
+                if (meta.step) attrs.push(`step="${escapeHtml(meta.step)}"`);
+            } else if (meta.rows) {
+                attrs.push(`rows="${escapeHtml(meta.rows)}"`);
+            }
+
+            return `
+                <article class="field-card">
+                    <label class="block">
+                        <div class="field-label">
+                            <div>
+                                <div class="text-[10px] font-extrabold uppercase tracking-[0.28em] text-neutral-400">${escapeHtml(meta.label)}</div>
+                            </div>
+                            ${badge}
+                        </div>
+                        ${tag === 'textarea'
+                            ? `<textarea class="${classes}" data-setting-key="${escapeHtml(key)}" ${attrs.join(' ')}>${escapeHtml(normalized)}</textarea>`
+                            : `<input class="${classes}" data-setting-key="${escapeHtml(key)}" value="${escapeHtml(normalized)}" ${attrs.join(' ')}>`}
+                        <div class="field-hint">${escapeHtml(meta.hint || '')}</div>
+                    </label>
+                </article>
+            `;
+        }
+
+        function populateWorkflowSelects() {
+            const workflowSelects = document.querySelectorAll('#workflowFields select[data-setting-key]');
+            workflowSelects.forEach((select) => {
+                const currentValue = select.dataset.defaultValue || '';
+                select.innerHTML = '';
+
+                const emptyOption = document.createElement('option');
+                emptyOption.value = '';
+                emptyOption.textContent = 'Select a workflow...';
+                select.appendChild(emptyOption);
+
+                let hasSelectedValue = false;
+                latestWorkflows.forEach((wf) => {
+                    const option = document.createElement('option');
+                    option.value = wf;
+                    option.textContent = wf;
+                    if (wf === currentValue) {
+                        option.selected = true;
+                        hasSelectedValue = true;
+                    }
+                    select.appendChild(option);
+                });
+
+                if (currentValue && !hasSelectedValue) {
+                    const missingOption = document.createElement('option');
+                    missingOption.value = currentValue;
+                    missingOption.textContent = `${currentValue} (missing)`;
+                    missingOption.selected = true;
+                    select.appendChild(missingOption);
+                }
+            });
+        }
+
+        function renderFieldGroups(editable) {
+            accessFields.innerHTML = FIELD_GROUPS.access.filter((key) => key in editable).map((key) => buildField(key, editable[key])).join('');
+            modelFields.innerHTML = FIELD_GROUPS.models.filter((key) => key in editable).map((key) => buildField(key, editable[key])).join('');
+            runtimeFields.innerHTML = FIELD_GROUPS.runtime.filter((key) => key in editable).map((key) => buildField(key, editable[key])).join('');
+            workflowFields.innerHTML = FIELD_GROUPS.workflows.filter((key) => key in editable).map((key) => buildField(key, editable[key])).join('');
+            populateWorkflowSelects();
+
+            settingsForm.querySelectorAll('[data-setting-key]').forEach((element) => {
+                if (element.tagName === 'SELECT') {
+                    element.addEventListener('change', handleFieldInput);
+                } else {
+                    element.addEventListener('input', handleFieldInput);
+                }
+            });
+
+            refreshDirtyUI();
+        }
+
+        function renderSummary(env, workflows, comfyStatus) {
+            const totalNodes = Array.isArray(comfyStatus) ? comfyStatus.length : 0;
+            const onlineCount = Array.isArray(comfyStatus) ? comfyStatus.filter((item) => item?.reachable).length : 0;
+            const metrics = [
+                {
+                    label: 'Client ID',
+                    value: env?.client_id || '—',
+                    note: 'Browser session binding',
+                    mono: true
+                },
+                {
+                    label: 'API Key',
+                    value: env?.has_api_key ? 'Connected' : 'Missing',
+                    note: 'Safe availability only'
+                },
+                {
+                    label: 'ComfyUI Nodes',
+                    value: String(totalNodes || 0),
+                    note: `${onlineCount} online`
+                },
+                {
+                    label: 'Workflows',
+                    value: String(Array.isArray(workflows) ? workflows.length : 0),
+                    note: env?.default_comfy ? `Default · ${env.default_comfy}` : 'No default node',
+                    mono: !!env?.default_comfy
+                }
+            ];
+
+            summaryGrid.innerHTML = metrics.map((item) => `
+                <article class="summary-card">
+                    <div class="text-[10px] font-extrabold uppercase tracking-[0.28em] text-neutral-400">${escapeHtml(item.label)}</div>
+                    <div class="summary-value${item.mono ? ' mono text-[19px] md:text-[21px]' : ''}">${escapeHtml(item.value)}</div>
+                    <div class="mt-3 text-sm text-neutral-500">${escapeHtml(item.note)}</div>
+                </article>
+            `).join('');
+        }
+
+        function renderEnvSummary(env) {
+            const entries = Object.entries(env || {});
+            if (!entries.length) {
+                envSummary.innerHTML = `
+                    <div class="state-card">
+                        <div class="state-icon mx-auto"><i data-lucide="shield-off" class="h-6 w-6 text-neutral-400"></i></div>
+                        <h3 class="text-lg font-bold tracking-[-0.04em]">暂无环境摘要</h3>
+                        <p class="mt-3 text-sm leading-6 text-neutral-500">后端没有返回安全摘要字段。</p>
+                    </div>
+                `;
+                return;
+            }
+
+            envSummary.innerHTML = entries.map(([key, value]) => {
+                const displayValue = Array.isArray(value) ? value.join(', ') : (typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value || '—'));
+                const monoClass = ['client_id', 'default_comfy'].includes(key) ? ' mono' : '';
+                return `
+                    <article class="workflow-card">
+                        <div class="text-[10px] font-extrabold uppercase tracking-[0.24em] text-neutral-400">${escapeHtml(formatLabel(key))}</div>
+                        <div class="mt-3 break-all text-[14px] font-semibold leading-6 text-neutral-900${monoClass}">${escapeHtml(displayValue)}</div>
+                    </article>
+                `;
+            }).join('');
+        }
+
+        function renderComfyInstances(instances) {
+            const items = Array.isArray(instances) ? instances : [];
+            comfyInstances = items;
+            const onlineCount = items.filter((item) => item?.reachable).length;
+            const offlineCount = items.length - onlineCount;
+            comfyStatusMeta.textContent = items.length
+                ? `${items.length} 个实例 · ${onlineCount} 在线${offlineCount ? ` · ${offlineCount} 离线` : ''}`
+                : '暂无实例';
+
+            if (!items.length) {
+                comfyInstanceList.innerHTML = `
+                    <div class="comfy-empty-state">
+                        <div class="state-icon mx-auto"><i data-lucide="server-off" class="h-6 w-6 text-neutral-400"></i></div>
+                        <h3 class="text-lg font-bold tracking-[-0.04em]">暂无 ComfyUI 实例</h3>
+                        <p class="mt-2 text-sm leading-6 text-neutral-500">在下方添加 ComfyUI 后端地址，例如 <code class="mono bg-gray-100 px-1.5 py-0.5 rounded text-xs">127.0.0.1:8188</code></p>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            comfyInstanceList.innerHTML = items.map((item, idx) => {
+                const reachable = !!item?.reachable;
+                const isEditing = comfyEditingIdx === idx;
+                return `
+                    <article class="comfy-instance-card${isEditing ? ' editing' : ''}" data-comfy-idx="${idx}">
+                        <div class="instance-header">
+                            <div class="flex items-center gap-3 min-w-0 flex-1">
+                                <span class="instance-idx">#${idx + 1}</span>
+                                <span class="instance-addr">${escapeHtml(item?.address || 'Unknown')}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="badge ${reachable ? 'online' : 'offline'}">${reachable ? 'Online' : 'Offline'}</span>
+                                <div class="instance-actions">
+                                    <button class="icon-btn primary" title="测试连接" onclick="testComfyInstance(${idx})" ${isEditing ? 'disabled' : ''}>
+                                        <i data-lucide="zap" class="h-3.5 w-3.5"></i>
+                                    </button>
+                                    <button class="icon-btn" title="编辑地址" onclick="startEditComfy(${idx})" ${isEditing ? 'disabled' : ''}>
+                                        <i data-lucide="pencil" class="h-3.5 w-3.5"></i>
+                                    </button>
+                                    <button class="icon-btn danger" title="删除实例" onclick="deleteComfyInstance(${idx})" ${isEditing ? 'disabled' : ''}>
+                                        <i data-lucide="trash-2" class="h-3.5 w-3.5"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        ${isEditing ? `
+                            <div class="instance-edit-row">
+                                <input class="field-input mono" id="comfyEditInput" type="text" value="${escapeHtml(item?.address || '')}" placeholder="例如 127.0.0.1:8188" onkeydown="if(event.key==='Enter')saveEditComfy(${idx});if(event.key==='Escape')cancelEditComfy();" />
+                                <button class="action-btn" style="height:38px;font-size:10px;padding:0 12px;" onclick="saveEditComfy(${idx})">保存</button>
+                                <button class="ghost-btn" style="height:38px;font-size:10px;padding:0 12px;" onclick="cancelEditComfy()">取消</button>
+                            </div>
+                        ` : `
+                            <div class="instance-queues">
+                                <div class="queue-chip-sm">
+                                    <div class="queue-label">Running</div>
+                                    <div class="queue-val">${escapeHtml(String(item?.queue_running ?? 0))}</div>
+                                </div>
+                                <div class="queue-chip-sm">
+                                    <div class="queue-label">Pending</div>
+                                    <div class="queue-val">${escapeHtml(String(item?.queue_pending ?? 0))}</div>
+                                </div>
+                            </div>
+                            ${item?.system_info ? `<div class="instance-probe-time">ComfyUI ${escapeHtml(item.system_info?.system?.comfyui_version || '')}</div>` : ''}
+                            ${!reachable ? '<div class="instance-error">无法连接。请确认 ComfyUI 已启动、端口正确，且当前服务可访问该地址。</div>' : ''}
+                        `}
+                    </article>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        async function loadComfyInstances() {
+            try {
+                const resp = await fetch('/api/comfy/instances');
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const data = await resp.json();
+                renderComfyInstances(data.instances || []);
+            } catch (err) {
+                comfyInstanceList.innerHTML = `
+                    <div class="comfy-empty-state">
+                        <div class="state-icon mx-auto"><i data-lucide="cloud-off" class="h-6 w-6 text-neutral-400"></i></div>
+                        <h3 class="text-lg font-bold tracking-[-0.04em]">加载失败</h3>
+                        <p class="mt-2 text-sm leading-6 text-neutral-500">${escapeHtml(err?.message || '无法获取实例列表')}</p>
+                    </div>
+                `;
+                comfyStatusMeta.textContent = '加载失败';
+                lucide.createIcons();
+            }
+        }
+
+        async function addComfyInstance() {
+            const address = comfyNewAddress.value.trim();
+            if (!address) {
+                setComfyFeedback([{ tone: 'error', text: '请输入 ComfyUI 地址' }]);
+                return;
+            }
+            comfyAddBtn.disabled = true;
+            comfyAddBtn.textContent = '添加中…';
+            setComfyFeedback([{ tone: 'info', text: `正在添加 ${address} 并检测连接…` }]);
+            try {
+                const resp = await fetch('/api/comfy/instances', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ address })
+                });
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data?.detail || `HTTP ${resp.status}`);
+                comfyNewAddress.value = '';
+                setComfyFeedback([{ tone: 'success', text: `已添加 ${address}${data.added?.reachable ? '，连接正常' : '，但无法连接（请确认 ComfyUI 已启动）'}。` }]);
+                await loadComfyInstances();
+            } catch (err) {
+                setComfyFeedback([{ tone: 'error', text: `添加失败：${err?.message || 'Unknown error'}` }]);
+            } finally {
+                comfyAddBtn.disabled = false;
+                comfyAddBtn.innerHTML = '<i data-lucide="plus" class="h-4 w-4 mr-1 inline-block" style="vertical-align:-2px;"></i>添加';
+                lucide.createIcons();
+            }
+        }
+
+        window.deleteComfyInstance = async function deleteComfyInstance(idx) {
+            const item = comfyInstances[idx];
+            if (!item) return;
+            const addr = item.address || 'Unknown';
+            if (!confirm(`确定要删除实例 ${addr} 吗？`)) return;
+            setComfyFeedback([{ tone: 'info', text: `正在删除 ${addr}…` }]);
+            try {
+                const resp = await fetch(`/api/comfy/instances/${idx}`, { method: 'DELETE' });
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data?.detail || `HTTP ${resp.status}`);
+                setComfyFeedback([{ tone: 'success', text: `已删除实例 ${addr}。` }]);
+                await loadComfyInstances();
+            } catch (err) {
+                setComfyFeedback([{ tone: 'error', text: `删除失败：${err?.message || 'Unknown error'}` }]);
+            }
+        };
+
+        window.startEditComfy = function startEditComfy(idx) {
+            comfyEditingIdx = idx;
+            renderComfyInstances(comfyInstances);
+            setTimeout(() => {
+                const input = document.getElementById('comfyEditInput');
+                if (input) { input.focus(); input.select(); }
+            }, 50);
+        };
+
+        function cancelEditComfy() {
+            comfyEditingIdx = -1;
+            renderComfyInstances(comfyInstances);
+        }
+
+        window.saveEditComfy = async function saveEditComfy(idx) {
+            const input = document.getElementById('comfyEditInput');
+            if (!input) return;
+            const newAddress = input.value.trim();
+            if (!newAddress) {
+                setComfyFeedback([{ tone: 'error', text: '地址不能为空' }]);
+                return;
+            }
+            const oldItem = comfyInstances[idx];
+            if (oldItem && newAddress === oldItem.address) {
+                cancelEditComfy();
+                return;
+            }
+            setComfyFeedback([{ tone: 'info', text: `正在更新为 ${newAddress}…` }]);
+            try {
+                const resp = await fetch(`/api/comfy/instances/${idx}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ address: newAddress })
+                });
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data?.detail || `HTTP ${resp.status}`);
+                comfyEditingIdx = -1;
+                setComfyFeedback([{ tone: 'success', text: `已更新为 ${newAddress}${data.updated?.reachable ? '，连接正常' : ''}。` }]);
+                await loadComfyInstances();
+            } catch (err) {
+                setComfyFeedback([{ tone: 'error', text: `更新失败：${err?.message || 'Unknown error'}` }]);
+            }
+        };
+
+        window.testComfyInstance = async function testComfyInstance(idx) {
+            const item = comfyInstances[idx];
+            if (!item) return;
+            const addr = item.address;
+            setComfyFeedback([{ tone: 'info', text: `正在测试连接 ${addr}…` }]);
+            try {
+                const resp = await fetch('/api/comfy/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ address: addr })
+                });
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data?.detail || `HTTP ${resp.status}`);
+                if (data.reachable) {
+                    const ver = data.system_info?.system?.comfyui_version || '';
+                    setComfyFeedback([{
+                        tone: 'success',
+                        text: `连接成功！${addr} 在线，Running: ${data.queue_running}，Pending: ${data.queue_pending}${ver ? `，版本: ${ver}` : ''}`
+                    }]);
+                } else {
+                    setComfyFeedback([{ tone: 'error', text: `无法连接 ${addr}。请确认 ComfyUI 已启动且端口正确。` }]);
+                }
+                await loadComfyInstances();
+            } catch (err) {
+                setComfyFeedback([{ tone: 'error', text: `测试失败：${err?.message || 'Unknown error'}` }]);
+            }
+        };
+
+        function setComfyFeedback(messages) {
+            const items = Array.isArray(messages) ? messages.filter(Boolean) : [];
+            if (!items.length) { comfyFeedback.innerHTML = ''; return; }
+            comfyFeedback.innerHTML = items.map((item) =>
+                `<div class="comfy-feedback ${escapeHtml(item.tone || 'info')}">${escapeHtml(item.text || '')}</div>`
+            ).join('');
+        }
+
+        function renderWorkflows(workflows) {
+            const items = Array.isArray(workflows) ? workflows : [];
+            workflowMeta.textContent = `${items.length} 个文件`;
+
+            if (!items.length) {
+                workflowList.innerHTML = `
+                    <div class="state-card">
+                        <div class="state-icon mx-auto"><i data-lucide="folder-search-2" class="h-6 w-6 text-neutral-400"></i></div>
+                        <h3 class="text-lg font-bold tracking-[-0.04em]">暂无工作流</h3>
+                        <p class="mt-3 text-sm leading-6 text-neutral-500">workflows 目录里还没有可显示的 JSON 文件。</p>
+                    </div>
+                `;
+                return;
+            }
+
+            workflowList.innerHTML = items.map((workflow) => {
+                const safeName = String(workflow || 'Untitled workflow');
+                const ext = safeName.includes('.') ? safeName.split('.').pop().toUpperCase() : 'FILE';
+                return `
+                    <article class="workflow-card">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <div class="text-[10px] font-extrabold uppercase tracking-[0.24em] text-neutral-400">Workflow</div>
+                                <div class="mono mt-3 break-all text-[14px] font-semibold leading-6 text-neutral-900">${escapeHtml(safeName)}</div>
+                            </div>
+                            <div class="badge safe">${escapeHtml(ext)}</div>
+                        </div>
+                    </article>
+                `;
+            }).join('');
+        }
+
+        function renderLoading() {
+            isLoading = true;
+            setMeta('Loading settings', 'loading');
+            setFeedback([{ tone: 'info', text: '正在读取 /api/settings ...' }]);
+            summaryGrid.innerHTML = Array.from({ length: 4 }).map(() => `
+                <div class="summary-card">
+                    <div class="skeleton h-3 w-20"></div>
+                    <div class="skeleton mt-4 h-8 w-28"></div>
+                    <div class="skeleton mt-3 h-3 w-24"></div>
+                </div>
+            `).join('');
+            envSummary.innerHTML = '<div class="summary-card"><div class="skeleton h-4 w-full"></div><div class="skeleton mt-3 h-4 w-3/4"></div></div>';
+            workflowList.innerHTML = '<div class="workflow-card"><div class="skeleton h-4 w-full"></div><div class="skeleton mt-3 h-4 w-2/3"></div></div>';
+            comfyInstanceList.innerHTML = '<div class="comfy-instance-card"><div class="skeleton h-4 w-32"></div><div class="skeleton mt-3 h-8 w-full rounded-[12px]"></div></div>';
+            comfyStatusMeta.textContent = '加载中…';
+            accessFields.innerHTML = '';
+            modelFields.innerHTML = '';
+            runtimeFields.innerHTML = '';
+            workflowFields.innerHTML = '';
+            updateActionState();
+        }
+
+        function renderLoadError(message) {
+            isLoading = false;
+            const safeMessage = message || 'Unknown error';
+            setMeta('Unable to load', 'error');
+            setFeedback([{ tone: 'error', text: `读取设置失败：${safeMessage}` }]);
+            summaryGrid.innerHTML = `
+                <article class="summary-card md:col-span-2 xl:col-span-4">
+                    <div class="text-[10px] font-extrabold uppercase tracking-[0.28em] text-red-400">Request Error</div>
+                    <div class="summary-value text-red-600">/api/settings</div>
+                    <p class="mt-3 max-w-2xl text-sm leading-6 text-neutral-500">${escapeHtml(safeMessage)}</p>
+                </article>
+            `;
+            const errorCard = `
+                <div class="state-card">
+                    <div class="state-icon mx-auto"><i data-lucide="cloud-off" class="h-6 w-6 text-neutral-400"></i></div>
+                    <h3 class="text-lg font-bold tracking-[-0.04em]">读取失败</h3>
+                    <p class="mt-3 text-sm leading-6 text-neutral-500">${escapeHtml(safeMessage)}</p>
+                </div>
+            `;
+            envSummary.innerHTML = errorCard;
+            workflowList.innerHTML = errorCard;
+            comfyInstanceList.innerHTML = errorCard;
+            comfyStatusMeta.textContent = '加载失败';
+            accessFields.innerHTML = '';
+            modelFields.innerHTML = '';
+            runtimeFields.innerHTML = '';
+            workflowFields.innerHTML = '';
+            updateActionState();
+            lucide.createIcons();
+        }
+
+        function refreshDirtyUI() {
+            settingsForm.querySelectorAll('[data-setting-key]').forEach((element) => {
+                const key = element.dataset.settingKey;
+                const dirty = (currentEditable[key] ?? '') !== (initialEditable[key] ?? '');
+                element.classList.toggle('dirty', dirty);
+            });
+
+            const messages = [];
+            if (isDirty()) {
+                messages.push({ tone: 'info', text: '你有未保存的修改。保存会写入 API/.env。' });
+            }
+            setFeedback(messages);
+            updateActionState();
+        }
+
+        function updateActionState() {
+            const dirty = isDirty();
+            saveButton.disabled = isLoading || isSaving || !dirty;
+            resetButton.disabled = isLoading || isSaving || !dirty;
+            saveButton.textContent = isSaving ? 'Saving...' : 'Save Changes';
+        }
+
+        function handleFieldInput(event) {
+            const key = event.target.dataset.settingKey;
+            currentEditable[key] = event.target.value;
+            refreshDirtyUI();
+        }
+
+        function collectPayload() {
+            const payload = {};
+            Object.keys(initialEditable).forEach((key) => {
+                payload[key] = parseFieldValue(key, getFormValue(key));
+            });
+            return payload;
+        }
+
+        function applyFetchedData(data) {
+            latestEnv = data?.env || {};
+            latestStatus = Array.isArray(data?.comfyui_status) ? data.comfyui_status : [];
+            latestWorkflows = Array.isArray(data?.workflows) ? data.workflows : [];
+
+            const editable = {};
+            Object.entries(data?.editable || {}).forEach(([key, value]) => {
+                editable[key] = normalizeEditableValue(key, value);
+            });
+
+            initialEditable = editable;
+            currentEditable = { ...editable };
+
+            renderSummary(latestEnv, latestWorkflows, latestStatus);
+            renderFieldGroups(editable);
+            renderEnvSummary(latestEnv);
+            renderWorkflows(latestWorkflows);
+            setMeta(`Updated ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`, 'success');
+            isLoading = false;
+            updateActionState();
+            lucide.createIcons();
+            // Load ComfyUI instances separately via dedicated API
+            loadComfyInstances();
+        }
+
+        async function loadSettings(options = {}) {
+            const preserveFeedback = !!options.preserveFeedback;
+            renderLoading();
+            try {
+                const response = await fetch('/api/settings');
+                if (!response.ok) {
+                    let message = `HTTP ${response.status}`;
+                    try {
+                        const payload = await response.json();
+                        message = payload?.detail || payload?.message || message;
+                    } catch (error) {
+                    }
+                    throw new Error(message);
+                }
+
+                const data = await response.json();
+                applyFetchedData(data);
+                if (!preserveFeedback) {
+                    setFeedback([]);
+                }
+                return true;
+            } catch (error) {
+                renderLoadError(error?.message || 'Unknown error');
+                return false;
+            }
+        }
+
+        async function saveSettings(event) {
+            event.preventDefault();
+            if (!isDirty() || isSaving) return;
+
+            isSaving = true;
+            updateActionState();
+            setFeedback([{ tone: 'info', text: '正在保存到 API/.env ...' }]);
+
+            try {
+                const response = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(collectPayload())
+                });
+
+                if (!response.ok) {
+                    let message = `HTTP ${response.status}`;
+                    try {
+                        const payload = await response.json();
+                        message = payload?.detail || payload?.message || message;
+                    } catch (error) {
+                    }
+                    throw new Error(message);
+                }
+
+                const result = await response.json();
+                const reloadSucceeded = await loadSettings({ preserveFeedback: true });
+
+                if (!reloadSucceeded) {
+                    throw new Error('设置已写入，但刷新最新状态失败，请手动重新打开页面确认。');
+                }
+
+                const messages = [{ tone: 'success', text: '设置已保存。' }];
+                if (result?.restart_required) {
+                    messages.push({ tone: 'info', text: '部分改动需要重启后端后才会完全生效。' });
+                }
+                setFeedback(messages);
+                setMeta(result?.restart_required ? 'Saved · restart required' : 'Saved', 'success');
+            } catch (error) {
+                setMeta('Save failed', 'error');
+                setFeedback([{ tone: 'error', text: `保存失败：${error?.message || 'Unknown error'}` }]);
+            } finally {
+                isSaving = false;
+                updateActionState();
+                lucide.createIcons();
+            }
+        }
+
+        function resetForm() {
+            if (isSaving || isLoading) return;
+            currentEditable = { ...initialEditable };
+            Object.keys(currentEditable).forEach((key) => {
+                const element = document.querySelector(`[data-setting-key="${key}"]`);
+                if (element) {
+                    element.value = currentEditable[key];
+                }
+            });
+            setFeedback([]);
+            refreshDirtyUI();
+        }
+
+        settingsForm.addEventListener('submit', saveSettings);
+        resetButton.addEventListener('click', resetForm);
+        comfyAddBtn.addEventListener('click', addComfyInstance);
+        comfyNewAddress.addEventListener('keydown', (e) => { if (e.key === 'Enter') addComfyInstance(); });
+        window.addEventListener('load', () => loadSettings());
+    </script>
+</body>
+
+</html>
