@@ -77,39 +77,33 @@ def _write_instances(instances: list[str]) -> None:
 
 
 def _probe_instance(address: str) -> dict[str, object]:
-    status: dict[str, object] = {
+    status = {
         "address": address,
         "reachable": False,
         "queue_running": 0,
         "queue_pending": 0,
         "system_info": None,
     }
-    try:
-        response = requests.get(f"http://{address}/queue", timeout=3)
-        if response.status_code == 200:
+    for endpoint, key in [("queue", "queue"), ("system_stats", "system_info")]:
+        try:
+            response = requests.get(f"http://{address}/{endpoint}", timeout=3)
+            if response.status_code != 200:
+                continue
             data = response.json()
-            status["reachable"] = True
-            status["queue_running"] = _queue_size(data, "queue_running")
-            status["queue_pending"] = _queue_size(data, "queue_pending")
-    except Exception:
-        pass
-    try:
-        response = requests.get(f"http://{address}/system_stats", timeout=3)
-        if response.status_code == 200:
-            status["system_info"] = response.json()
-    except Exception:
-        pass
+            if key == "queue":
+                status["reachable"] = True
+                status["queue_running"] = _queue_size(data, "queue_running")
+                status["queue_pending"] = _queue_size(data, "queue_pending")
+            else:
+                status["system_info"] = data
+        except Exception:
+            pass
     return status
 
 
 def _settings_comfy_status(address: str) -> dict[str, object]:
     status = _probe_instance(address)
-    return {
-        "address": status["address"],
-        "reachable": status["reachable"],
-        "queue_running": status["queue_running"],
-        "queue_pending": status["queue_pending"],
-    }
+    return {k: status[k] for k in ("address", "reachable", "queue_running", "queue_pending")}
 
 
 @router.get("/api/settings")

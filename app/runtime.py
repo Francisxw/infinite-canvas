@@ -23,9 +23,9 @@ def ensure_backend_local_load() -> dict[str, int]:
     with LOAD_LOCK:
         for addr in instances:
             BACKEND_LOCAL_LOAD.setdefault(addr, 0)
-        for addr in list(BACKEND_LOCAL_LOAD.keys()):
-            if addr not in instances:
-                BACKEND_LOCAL_LOAD.pop(addr, None)
+        stale = [addr for addr in BACKEND_LOCAL_LOAD if addr not in instances]
+        for addr in stale:
+            BACKEND_LOCAL_LOAD.pop(addr, None)
         return dict(BACKEND_LOCAL_LOAD)
 
 

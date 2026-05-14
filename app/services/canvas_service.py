@@ -47,23 +47,23 @@ def new_canvas(title: str = "未命名画布", icon: str = "layers") -> dict:
     return canvas
 
 
-def load_canvas(canvas_id: str) -> dict:
+def _load_canvas_raw(canvas_id: str) -> dict:
     path = canvas_path(canvas_id)
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="画布不存在")
     with open(path, "r", encoding="utf-8") as file:
-        canvas = json.load(file)
+        return json.load(file)
+
+
+def load_canvas(canvas_id: str) -> dict:
+    canvas = _load_canvas_raw(canvas_id)
     if canvas.get("deleted_at"):
         raise HTTPException(status_code=404, detail="画布已在回收站")
     return canvas
 
 
 def load_canvas_any(canvas_id: str) -> dict:
-    path = canvas_path(canvas_id)
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="画布不存在")
-    with open(path, "r", encoding="utf-8") as file:
-        return json.load(file)
+    return _load_canvas_raw(canvas_id)
 
 
 def _canvas_record(data: dict) -> dict:

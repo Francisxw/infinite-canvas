@@ -26,11 +26,9 @@ def check_images_exist(backend_addr: str, images: list[str] | None) -> bool:
 
 def get_best_backend(required_images: list[str] | None = None, backend_local_load: Optional[dict[str, int]] = None, load_lock: Optional[Lock] = None) -> str:
     instances = get_comfyui_instances()
-    best_backend = instances[0]
-    min_queue_size = float("inf")
+    backend_stats = {}
     candidates_with_images = []
     candidates_others = []
-    backend_stats = {}
 
     for addr in instances:
         try:
@@ -44,29 +42,14 @@ def get_best_backend(required_images: list[str] | None = None, backend_local_loa
                     local_load = (backend_local_load or {}).get(addr, 0)
                 effective_load = max(remote_load, local_load)
                 has_images = check_images_exist(addr, required_images)
-                backend_stats[addr] = {"load": effective_load, "has_images": has_images}
-                if has_images:
-                    candidates_with_images.append(addr)
-                else:
-                    candidates_others.append(addr)
+                backend_stats[addr] = effective_load
+                (candidates_with_images if has_images else candidates_others).append(addr)
         except Exception as exc:
             print(f"Backend {addr} unreachable: {exc}")
             continue
 
-    target_candidates = candidates_with_images if candidates_with_images else candidates_others
-    if not target_candidates:
-        if candidates_others:
-            target_candidates = candidates_others
-        else:
-            return instances[0]
-
-    for addr in target_candidates:
-        load = backend_stats[addr]["load"]
-        if load < min_queue_size:
-            min_queue_size = load
-            best_backend = addr
-
-    return best_backend
+    target_candidates = candidates_with_images or candidates_others or instances
+    return min(target_candidates, key=lambda addr: backend_stats.get(addr, float("inf")), default=instances[0])
 
 
 def get_comfy_history(comfy_address: str, prompt_id: str) -> dict[str, object]:

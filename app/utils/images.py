@@ -126,54 +126,57 @@ async def wait_for_image_task(client: httpx.AsyncClient, task_id: str) -> dict[s
     raise HTTPException(status_code=504, detail=f"生图任务超时，task_id={task_id}")
 
 
+def _ext_for_content_type(content_type: str) -> str:
+    ct = content_type.lower()
+    if "jpeg" in ct or "jpg" in ct:
+        return ".jpg"
+    if "webp" in ct:
+        return ".webp"
+    return ".png"
+
+
 async def save_ai_image_to_output(image_data: dict[str, Any], prefix: str = "online_") -> str:
-    filename = f"{prefix}{uuid.uuid4().hex[:10]}.png"
-    path = os.path.join(OUTPUT_DIR, filename)
-    if image_data["type"] == "b64":
-        with open(path, "wb") as file:
-            file.write(base64.b64decode(image_data["value"]))
-        return f"/output/{filename}"
     value = image_data["value"]
     if value.startswith("/output/"):
         return value
-    try:
-        async with httpx.AsyncClient(timeout=get_ai_request_timeout()) as client:
-            response = await client.get(value)
-            response.raise_for_status()
-            content_type = response.headers.get("Content-Type", "")
-            if "jpeg" in content_type or "jpg" in content_type:
-                filename = filename[:-4] + ".jpg"
-                path = os.path.join(OUTPUT_DIR, filename)
-            elif "webp" in content_type:
-                filename = filename[:-4] + ".webp"
-                path = os.path.join(OUTPUT_DIR, filename)
-            with open(path, "wb") as file:
-                file.write(response.content)
-            return f"/output/{filename}"
-    except Exception as exc:
-        print(f"保存上游图片失败: {exc}")
-        return value
+
+    ext = ".png"
+    content = None
+    if image_data["type"] == "b64":
+        content = base64.b64decode(value)
+    else:
+        try:
+            async with httpx.AsyncClient(timeout=get_ai_request_timeout()) as client:
+                response = await client.get(value)
+                response.raise_for_status()
+                content = response.content
+                ext = _ext_for_content_type(response.headers.get("Content-Type", ""))
+        except Exception as exc:
+            print(f"保存上游图片失败: {exc}")
+            return value
+
+    filename = f"{prefix}{uuid.uuid4().hex[:10]}{ext}"
+    path = os.path.join(OUTPUT_DIR, filename)
+    with open(path, "wb") as file:
+        file.write(content)
+    return f"/output/{filename}"
 
 
 async def generate_ai_image(prompt: str, size: str, quality: str, model: str, reference_images: list[dict[str, Any]] | None = None):
     refs = [ref for ref in (reference_images or []) if ref.get("url")]
     async with httpx.AsyncClient(timeout=get_ai_request_timeout()) as client:
         if refs:
-            files = []
-            opened = []
-            try:
+            from contextlib import ExitStack
+            with ExitStack() as stack:
+                files = []
                 for ref in refs[:4]:
                     path = output_file_from_url(ref.get("url", ""))
                     if not path:
                         continue
-                    file_handle = open(path, "rb")
-                    opened.append(file_handle)
+                    file_handle = stack.enter_context(open(path, "rb"))
                     files.append(("image", (os.path.basename(path), file_handle, content_type_for_path(path))))
                 data = {"model": model, "prompt": prompt, "size": size, "quality": quality, "response_format": "url", "n": "1"}
                 response = await client.post(f"{get_ai_base_url()}/v1/images/edits", headers=api_headers(json_body=False), data=data, files=files)
-            finally:
-                for file_handle in opened:
-                    file_handle.close()
         else:
             response = await client.post(
                 f"{get_ai_base_url()}/v1/images/generations",

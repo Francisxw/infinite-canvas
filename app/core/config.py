@@ -23,11 +23,7 @@ def _model_list(env_name: str, primary: str, defaults: list[str]) -> list[str]:
     configured = os.getenv(env_name, "")
     configured_values = [item.strip() for item in configured.split(",") if item.strip()]
     values = configured_values or [primary, *defaults]
-    deduped: list[str] = []
-    for value in values:
-        if value and value not in deduped:
-            deduped.append(value)
-    return deduped
+    return list(dict.fromkeys(v for v in values if v))
 
 
 CLIENT_ID = str(uuid.uuid4())

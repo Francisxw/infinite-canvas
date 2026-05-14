@@ -9,12 +9,7 @@ def display_title(text: str) -> str:
     return title[:24] or "新对话"
 
 
-def text_from_chat_response(data: dict) -> str:
-    choices = data.get("choices") or []
-    if not choices:
-        return ""
-    message = choices[0].get("message") or {}
-    content = message.get("content", "")
+def _extract_text(content, joiner: str = "") -> str:
     if isinstance(content, str):
         return content
     if isinstance(content, list):
@@ -22,8 +17,16 @@ def text_from_chat_response(data: dict) -> str:
         for item in content:
             if isinstance(item, dict):
                 parts.append(item.get("text") or item.get("content") or "")
-        return "\n".join(part for part in parts if part)
-    return str(content)
+        return joiner.join(parts)
+    return str(content) if content else ""
+
+
+def text_from_chat_response(data: dict) -> str:
+    choices = data.get("choices") or []
+    if not choices:
+        return ""
+    message = choices[0].get("message") or {}
+    return _extract_text(message.get("content", ""), "\n")
 
 
 def text_delta_from_chat_chunk(data: dict) -> str:
@@ -31,16 +34,7 @@ def text_delta_from_chat_chunk(data: dict) -> str:
     if not choices:
         return ""
     delta = choices[0].get("delta") or {}
-    content = delta.get("content", "")
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        parts = []
-        for item in content:
-            if isinstance(item, dict):
-                parts.append(item.get("text") or item.get("content") or "")
-        return "".join(parts)
-    return str(content) if content else ""
+    return _extract_text(delta.get("content", ""))
 
 
 def sse_event(data: dict) -> str:

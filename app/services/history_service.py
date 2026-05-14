@@ -36,17 +36,17 @@ def get_history(item_type: Optional[str] = None) -> list[dict]:
             data = [item for item in data if item.get("type", "zimage") == item_type]
         data = [item for item in data if item.get("images") and len(item["images"]) > 0]
 
-        def sort_key(item: dict) -> float:
-            timestamp = item.get("timestamp", 0)
-            if isinstance(timestamp, (int, float)):
-                return float(timestamp)
-            return 0
-
-        data.sort(key=sort_key, reverse=True)
+        data.sort(key=lambda item: float(item.get("timestamp", 0)) if isinstance(item.get("timestamp"), (int, float)) else 0, reverse=True)
         return data
     except Exception as exc:
         print(f"读取历史文件失败: {exc}")
         return []
+
+
+def _timestamps_match(a, b) -> bool:
+    if isinstance(a, (int, float)) and isinstance(b, (int, float)):
+        return abs(float(a) - float(b)) < 0.001
+    return str(a) == str(b)
 
 
 def delete_history_entry(timestamp: float) -> dict:
@@ -59,14 +59,7 @@ def delete_history_entry(timestamp: float) -> dict:
             target_record = None
             new_history = []
             for item in history:
-                is_match = False
-                item_ts = item.get("timestamp", 0)
-                if isinstance(timestamp, (int, float)) and isinstance(item_ts, (int, float)):
-                    if abs(float(item_ts) - float(timestamp)) < 0.001:
-                        is_match = True
-                elif str(item_ts) == str(timestamp):
-                    is_match = True
-                if is_match:
+                if _timestamps_match(timestamp, item.get("timestamp", 0)):
                     target_record = item
                 else:
                     new_history.append(item)
@@ -74,18 +67,19 @@ def delete_history_entry(timestamp: float) -> dict:
                 with open(HISTORY_FILE, "w", encoding="utf-8") as file:
                     json.dump(new_history, file, ensure_ascii=False, indent=4)
 
-        if target_record:
-            for image_url in target_record.get("images", []):
-                if image_url.startswith("/output/"):
-                    filename = image_url.split("/")[-1]
-                    file_path = os.path.join(OUTPUT_DIR, filename)
-                    if os.path.exists(file_path):
-                        try:
-                            os.remove(file_path)
-                        except Exception as exc:
-                            print(f"Failed to delete file {file_path}: {exc}")
-            return {"success": True}
-        return {"success": False, "message": "Record not found"}
+        if not target_record:
+            return {"success": False, "message": "Record not found"}
+
+        for image_url in target_record.get("images", []):
+            if not image_url.startswith("/output/"):
+                continue
+            file_path = os.path.join(OUTPUT_DIR, os.path.basename(image_url.split("?", 1)[0]))
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except Exception as exc:
+                    print(f"Failed to delete file {file_path}: {exc}")
+        return {"success": True}
     except Exception as exc:
         print(f"Delete history error: {exc}")
         return {"success": False, "message": str(exc)}

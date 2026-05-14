@@ -22,6 +22,54 @@ from app.ws.manager import manager
 router = APIRouter()
 
 
+def _upsert_conversation(user_id: str, conversation_id: str, message: str) -> dict:
+    conversation = load_conversation(user_id, conversation_id) if conversation_id else new_conversation(user_id, display_title(message))
+    if not conversation.get("messages"):
+        conversation["title"] = display_title(message)
+    return conversation
+
+
+def _append_user_message(conversation: dict, payload: ChatRequest) -> None:
+    refs = [ref.dict() for ref in payload.reference_images if ref.url]
+    conversation["messages"].append({
+        "id": uuid.uuid4().hex,
+        "role": "user",
+        "content": payload.message,
+        "created_at": now_ms(),
+        "attachments": refs,
+        "mode": payload.mode,
+    })
+    conversation["updated_at"] = now_ms()
+
+
+def _build_upstream_messages(history: list[dict]) -> list[dict[str, Any]]:
+    messages: list[dict[str, Any]] = [{"role": "system", "content": get_system_prompt()}]
+    for item in history:
+        msg = upstream_message_from_record(item)
+        if msg:
+            messages.append(msg)
+    return messages
+
+
+async def _call_chat(chat_base: str, chat_hdrs: dict, model: str, messages: list) -> dict:
+    async with httpx.AsyncClient(timeout=get_ai_request_timeout()) as client:
+        response = await client.post(
+            f"{chat_base}/chat/completions",
+            headers=chat_hdrs,
+            json={"model": model, "messages": messages},
+        )
+        response.raise_for_status()
+        return response.json()
+
+
+def _http_error_from_httpx(exc: httpx.HTTPStatusError, prefix: str) -> HTTPException:
+    return HTTPException(status_code=exc.response.status_code, detail=f"{prefix}：{exc.response.text}")
+
+
+def _http_error_generic(exc: httpx.HTTPError, prefix: str) -> HTTPException:
+    return HTTPException(status_code=502, detail=f"{prefix}：{exc}")
+
+
 @router.post("/api/online-image")
 async def online_image(payload: OnlineImageRequest):
     model = selected_model(payload.model, get_image_model())
@@ -30,9 +78,9 @@ async def online_image(payload: OnlineImageRequest):
         image_data, raw = await generate_ai_image(payload.prompt, payload.size, payload.quality, model, refs)
         local_url = await save_ai_image_to_output(image_data, prefix="online_")
     except httpx.HTTPStatusError as exc:
-        raise HTTPException(status_code=exc.response.status_code, detail=f"上游生图接口错误：{exc.response.text}") from exc
+        raise _http_error_from_httpx(exc, "上游生图接口错误")
     except httpx.HTTPError as exc:
-        raise HTTPException(status_code=502, detail=f"请求上游生图接口失败：{exc}") from exc
+        raise _http_error_generic(exc, "请求上游生图接口失败")
 
     result = {
         "prompt": payload.prompt,
@@ -61,20 +109,11 @@ async def canvas_llm(payload: CanvasLLMRequest):
             upstream_messages.append({"role": role, "content": content})
     upstream_messages.append({"role": "user", "content": payload.message})
     try:
-        async with httpx.AsyncClient(timeout=get_ai_request_timeout()) as client:
-            response = await client.post(
-                f"{chat_base}/chat/completions",
-                headers=chat_hdrs,
-                json={"model": model, "messages": upstream_messages},
-            )
-            response.raise_for_status()
-            if not response.content:
-                raise HTTPException(status_code=502, detail="上游接口返回了空响应")
-            raw = response.json()
+        raw = await _call_chat(chat_base, chat_hdrs, model, upstream_messages)
     except httpx.HTTPStatusError as exc:
-        raise HTTPException(status_code=exc.response.status_code, detail=f"上游接口错误：{exc.response.text}") from exc
+        raise _http_error_from_httpx(exc, "上游接口错误")
     except httpx.HTTPError as exc:
-        raise HTTPException(status_code=502, detail=f"请求上游接口失败：{exc}") from exc
+        raise _http_error_generic(exc, "请求上游接口失败")
     text = text_from_chat_response(raw).strip() or "接口返回了空回复。"
     return {"text": text, "model": model, "raw_usage": raw.get("usage") if isinstance(raw, dict) else None}
 
@@ -82,32 +121,20 @@ async def canvas_llm(payload: CanvasLLMRequest):
 @router.post("/api/chat")
 async def chat(payload: ChatRequest, request: Request, x_user_id: str = Header(default="")):
     user_id = safe_user_id(x_user_id, request)
-    conversation = load_conversation(user_id, payload.conversation_id) if payload.conversation_id else new_conversation(user_id, display_title(payload.message))
-    if not conversation.get("messages"):
-        conversation["title"] = display_title(payload.message)
-
-    refs = [ref.dict() for ref in payload.reference_images if ref.url]
-    user_message = {
-        "id": uuid.uuid4().hex,
-        "role": "user",
-        "content": payload.message,
-        "created_at": now_ms(),
-        "attachments": refs,
-        "mode": payload.mode,
-    }
-    conversation["messages"].append(user_message)
-    conversation["updated_at"] = now_ms()
+    conversation = _upsert_conversation(user_id, payload.conversation_id, payload.message)
+    _append_user_message(conversation, payload)
     save_conversation(user_id, conversation)
 
     if payload.mode == "image":
         model = selected_model(payload.image_model or payload.model, get_image_model())
+        refs = [ref.dict() for ref in payload.reference_images if ref.url]
         try:
             image_data, raw = await generate_ai_image(payload.message, payload.size, payload.quality, model, refs)
             local_url = await save_ai_image_to_output(image_data, prefix="chat_")
         except httpx.HTTPStatusError as exc:
-            raise HTTPException(status_code=exc.response.status_code, detail=f"上游生图接口错误：{exc.response.text}") from exc
+            raise _http_error_from_httpx(exc, "上游生图接口错误")
         except httpx.HTTPError as exc:
-            raise HTTPException(status_code=502, detail=f"请求上游生图接口失败：{exc}") from exc
+            raise _http_error_generic(exc, "请求上游生图接口失败")
         assistant_message = {
             "id": uuid.uuid4().hex,
             "role": "assistant",
@@ -120,25 +147,13 @@ async def chat(payload: ChatRequest, request: Request, x_user_id: str = Header(d
         }
     else:
         chat_base, chat_hdrs, model = resolve_chat_provider(payload.model)
-        history = conversation["messages"][-get_max_history_messages():]
-        upstream_messages: list[dict[str, Any]] = [{"role": "system", "content": get_system_prompt()}]
-        for item in history:
-            msg = upstream_message_from_record(item)
-            if msg:
-                upstream_messages.append(msg)
+        upstream_messages = _build_upstream_messages(conversation["messages"][-get_max_history_messages():])
         try:
-            async with httpx.AsyncClient(timeout=get_ai_request_timeout()) as client:
-                response = await client.post(
-                    f"{chat_base}/chat/completions",
-                    headers=chat_hdrs,
-                    json={"model": model, "messages": upstream_messages},
-                )
-                response.raise_for_status()
-                raw = response.json()
+            raw = await _call_chat(chat_base, chat_hdrs, model, upstream_messages)
         except httpx.HTTPStatusError as exc:
-            raise HTTPException(status_code=exc.response.status_code, detail=f"上游接口错误：{exc.response.text}") from exc
+            raise _http_error_from_httpx(exc, "上游接口错误")
         except httpx.HTTPError as exc:
-            raise HTTPException(status_code=502, detail=f"请求上游接口失败：{exc}") from exc
+            raise _http_error_generic(exc, "请求上游接口失败")
         assistant_message = {
             "id": uuid.uuid4().hex,
             "role": "assistant",
@@ -160,30 +175,12 @@ async def chat_stream(payload: ChatRequest, request: Request, x_user_id: str = H
         raise HTTPException(status_code=400, detail="图片模式请使用 /api/chat")
 
     user_id = safe_user_id(x_user_id, request)
-    conversation = load_conversation(user_id, payload.conversation_id) if payload.conversation_id else new_conversation(user_id, display_title(payload.message))
-    if not conversation.get("messages"):
-        conversation["title"] = display_title(payload.message)
-
-    refs = [ref.dict() for ref in payload.reference_images if ref.url]
-    user_message = {
-        "id": uuid.uuid4().hex,
-        "role": "user",
-        "content": payload.message,
-        "created_at": now_ms(),
-        "attachments": refs,
-        "mode": payload.mode,
-    }
-    conversation["messages"].append(user_message)
-    conversation["updated_at"] = now_ms()
+    conversation = _upsert_conversation(user_id, payload.conversation_id, payload.message)
+    _append_user_message(conversation, payload)
     save_conversation(user_id, conversation)
 
     chat_base, chat_hdrs, model = resolve_chat_provider(payload.model)
-    history = conversation["messages"][-get_max_history_messages():]
-    upstream_messages: list[dict[str, Any]] = [{"role": "system", "content": get_system_prompt()}]
-    for item in history:
-        msg = upstream_message_from_record(item)
-        if msg:
-            upstream_messages.append(msg)
+    upstream_messages = _build_upstream_messages(conversation["messages"][-get_max_history_messages():])
 
     async def stream():
         content_parts = []

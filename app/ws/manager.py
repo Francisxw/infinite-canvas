@@ -45,13 +45,8 @@ class ConnectionManager:
         print(f"WS Disconnected. Total: {len(self.active_connections)}")
         await self.broadcast_count()
 
-    async def broadcast_count(self) -> None:
-        """
-        向所有已连接客户端广播当前在线人数统计。
-        发送消息类型为 stats，内容包含 online_count。
-        """
-        count = len(self.active_connections)
-        data = json.dumps({"type": "stats", "online_count": count})
+    async def _send_to_all(self, payload: dict) -> None:
+        data = json.dumps(payload)
         for connection in self.active_connections[:]:
             try:
                 await connection.send_text(data)
@@ -59,18 +54,12 @@ class ConnectionManager:
                 print(f"Broadcast error: {exc}")
                 self.active_connections.remove(connection)
 
+    async def broadcast_count(self) -> None:
+        count = len(self.active_connections)
+        await self._send_to_all({"type": "stats", "online_count": count})
+
     async def broadcast_new_image(self, image_data: dict) -> None:
-        """
-        向所有已连接客户端广播新图片消息。
-        :param image_data: 图片相关数据（字典）
-        """
-        data = json.dumps({"type": "new_image", "data": image_data})
-        for connection in self.active_connections[:]:
-            try:
-                await connection.send_text(data)
-            except Exception as exc:
-                print(f"Broadcast image error: {exc}")
-                self.active_connections.remove(connection)
+        await self._send_to_all({"type": "new_image", "data": image_data})
 
     async def send_personal_message(self, message: dict, client_id: str) -> None:
         """

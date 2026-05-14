@@ -2,9 +2,23 @@ from fastapi import APIRouter, Header, Request
 
 from app.models.schemas import CanvasCreateRequest, CanvasSaveRequest, ConversationCreateRequest, DeleteHistoryRequest
 from app.runtime import get_queue_status_for_client
-from app.services.canvas_service import delete_canvas as delete_canvas_record, list_canvases, list_deleted_canvases, load_canvas, new_canvas, purge_canvas as purge_canvas_record, restore_canvas as restore_canvas_record, update_canvas as update_canvas_record
-from app.services.conversation_service import delete_conversation, load_conversation, new_conversation, safe_user_id
-from app.services.conversation_service import list_conversations
+from app.services.canvas_service import (
+    delete_canvas as delete_canvas_record,
+    list_canvases,
+    list_deleted_canvases,
+    load_canvas,
+    new_canvas,
+    purge_canvas as purge_canvas_record,
+    restore_canvas as restore_canvas_record,
+    update_canvas as update_canvas_record,
+)
+from app.services.conversation_service import (
+    delete_conversation,
+    list_conversations,
+    load_conversation,
+    new_conversation,
+    safe_user_id,
+)
 from app.services.history_service import delete_history_entry, get_history
 
 

@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import uuid
 from typing import Optional
 
@@ -13,6 +14,30 @@ from app.ws.manager import manager
 
 
 router = APIRouter()
+
+_VIEW_TYPES = {"input", "output", "temp"}
+_SAFE_FILENAME_RE = re.compile(r"^[a-zA-Z0-9_.-]+$")
+_SAFE_SUBFOLDER_RE = re.compile(r"^[a-zA-Z0-9_./-]*$")
+
+
+def _validate_view_filename(filename: str) -> str:
+    raw = (filename or "").strip()
+    cleaned = os.path.basename(raw)
+    if not cleaned or cleaned != raw or not _SAFE_FILENAME_RE.fullmatch(cleaned):
+        raise HTTPException(status_code=400, detail="无效的文件名")
+    return cleaned
+
+
+def _validate_view_subfolder(subfolder: str) -> str:
+    cleaned = (subfolder or "").strip().replace("\\", "/")
+    invalid = (
+        cleaned.startswith("/")
+        or any(part == ".." for part in cleaned.split("/"))
+        or not _SAFE_SUBFOLDER_RE.fullmatch(cleaned)
+    )
+    if invalid:
+        raise HTTPException(status_code=400, detail="无效的子目录")
+    return cleaned
 
 
 @router.websocket("/ws/stats")
@@ -37,6 +62,10 @@ async def index():
 
 @router.get("/api/view")
 def view_image(filename: str, type: str = "input", subfolder: str = ""):
+    filename = _validate_view_filename(filename)
+    if type not in _VIEW_TYPES:
+        raise HTTPException(status_code=400, detail="无效的图片类型")
+    subfolder = _validate_view_subfolder(subfolder)
     for addr in get_comfyui_instances():
         try:
             url = f"http://{addr}/view"
@@ -61,12 +90,8 @@ def download_output(url: str, name: str = ""):
 @router.post("/api/upload")
 async def upload_image(files: list[UploadFile] = File(...)):
     uploaded_files = []
-    files_content = []
     for file in files:
         content = await file.read()
-        files_content.append((file, content))
-
-    for file, content in files_content:
         success_count = 0
         last_result = None
         for addr in get_comfyui_instances():
@@ -79,10 +104,9 @@ async def upload_image(files: list[UploadFile] = File(...)):
             except Exception as exc:
                 print(f"Upload error for {addr}: {exc}")
 
-        if success_count > 0 and last_result:
-            uploaded_files.append({"comfy_name": last_result.get("name", file.filename)})
-        else:
+        if not success_count or not last_result:
             raise HTTPException(status_code=500, detail="Failed to upload to any backend")
+        uploaded_files.append({"comfy_name": last_result.get("name", file.filename)})
 
     return {"files": uploaded_files}
 
@@ -109,7 +133,8 @@ async def upload_ai_reference(files: list[UploadFile] = File(...)):
 @router.get("/api/config")
 async def ai_config():
     chat_models = get_chat_models()
-    preferred_chat_model = next((model for model in chat_models if model == "gpt-5.5"), chat_models[0] if chat_models else get_chat_model())
+    fallback = chat_models[0] if chat_models else get_chat_model()
+    preferred_chat_model = next((model for model in chat_models if model == "gpt-5.5"), fallback)
     return {
         "base_url": get_ai_base_url(),
         "chat_model": preferred_chat_model,

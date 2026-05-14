@@ -3,6 +3,9 @@ name = "api-workbench"
 version = "0.1.0"
 description = "FastAPI API workbench"
 requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.136.1",
+]
 
 [project.optional-dependencies]
 dev = [
